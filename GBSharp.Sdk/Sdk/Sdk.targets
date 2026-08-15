@@ -1,0 +1,32 @@
+<Project>
+
+  <ItemGroup>
+    <!-- Build output is not source, and MSBuild's defaults do not know that. -->
+    <Compile Remove="build/**" />
+    <None Remove="build/**" />
+
+    <!--
+      Analyzers read the project file through AdditionalFiles rather than opening
+      it, which is the cached, deterministic path and the only one available to
+      code that must not touch disk.
+    -->
+    <AdditionalFiles Include="gbsharp.json" Condition="Exists('gbsharp.json')" />
+  </ItemGroup>
+
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+
+  <!--
+    Makes "design-time only" a fact rather than a comment.
+
+    DesignTimeBuild is what IntelliSense and live analysis run, so the editor
+    keeps working completely; what this stops is 'dotnet build' quietly producing
+    a netstandard assembly that is not a ROM and cannot become one.
+  -->
+  <Target Name="GBSharpBuildGuard"
+          BeforeTargets="CoreCompile"
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(GBSharpAllowManagedBuild)' != 'true'">
+    <Error Code="GBS0509"
+           Text="This project exists so an editor can analyse your code. Build the ROM with 'gbsharp build' instead. (Set GBSharpAllowManagedBuild=true to override.)" />
+  </Target>
+
+</Project>

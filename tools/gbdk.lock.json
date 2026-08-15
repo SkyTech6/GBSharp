@@ -1,0 +1,37 @@
+{
+  "$comment": "Pinned GBDK-2020 toolchain. Checksums taken from the GitHub release asset digests. Bump deliberately; see thesis section 21 (Build Reproducibility).",
+  "version": "4.5.0",
+  "releaseUrl": "https://github.com/gbdk-2020/gbdk-2020/releases/tag/4.5.0",
+  "assets": {
+    "win64": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-win64.zip",
+      "sha256": "266854ce92e3064871c5b28cd3436cc2a6cb136af9e7cf617140108f8c1c5890",
+      "size": 8636233
+    },
+    "win32": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-win32.zip",
+      "sha256": "30279db9e3cc3ebd5bac3c2679aa02b5613214567650a8eb51cfb498ea4c8fcd",
+      "size": 8874135
+    },
+    "linux64": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-linux64.tar.gz",
+      "sha256": "d7857a5f6d135ee4c249043ca26aad9f2ec8ab5d4106d97720d404114f42605c",
+      "size": 6870728
+    },
+    "linux-arm64": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-linux-arm64.tar.gz",
+      "sha256": "31eb2235f0fdb60163d0b1e9574a022098d6069cd56606a1daca4478a46e0439",
+      "size": 6810278
+    },
+    "macos": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-macos.tar.gz",
+      "sha256": "1aa549d12032d8f6509d11923bb28b1a453098f42597feb378e9a42541f8fd89",
+      "size": 6590356
+    },
+    "macos-arm64": {
+      "url": "https://github.com/gbdk-2020/gbdk-2020/releases/download/4.5.0/gbdk-macos-arm64.tar.gz",
+      "sha256": "289ee60e46c5a2785a21e35533f84a5131ed4a063b21b0dbdedc9a10af15bf78",
+      "size": 6251008
+    }
+  }
+}

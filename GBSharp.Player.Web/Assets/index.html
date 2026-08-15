@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<!--
+  The page a published GB# game is.
+
+  Written by `gbsharp publish web`, which fills in the title and the settings
+  and puts the ROM beside it. There is no emulator vocabulary here on purpose:
+  somebody opening this is playing a game, not using an emulator that happens
+  to have a game in it.
+
+  The tokens in double braces are replaced at publish time.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{TITLE}}</title>
+<style>
+  :root {
+    color-scheme: dark;
+    /* Not a Game Boy green: the screen is the game's, and a surround that
+       competes with it makes every game look like the same game. */
+    --surround: #121212;
+    --text: #e8e8e8;
+    --dim: #8a8a8a;
+  }
+
+  html, body {
+    height: 100%;
+    margin: 0;
+    background: var(--surround);
+    color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    overscroll-behavior: none;
+  }
+
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    padding: 1rem;
+    box-sizing: border-box;
+  }
+
+  #screen-holder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+  }
+
+  canvas {
+    /* Nearest neighbour, in every spelling browsers have used for it. A Game
+       Boy pixel is a square, and smoothing it into its neighbours is the one
+       thing that makes this look wrong immediately. */
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    background: #000;
+    display: block;
+    touch-action: none;
+  }
+
+  #start {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    background: rgba(18, 18, 18, 0.94);
+    border: 0;
+    color: var(--text);
+    font: inherit;
+    cursor: pointer;
+  }
+
+  #start strong { font-size: 1.4rem; font-weight: 600; }
+  #start span { color: var(--dim); }
+  #start[hidden] { display: none; }
+
+  footer { color: var(--dim); font-size: 13px; text-align: center; }
+  kbd {
+    background: #262626;
+    border-radius: 4px;
+    padding: 1px 5px;
+    font: inherit;
+    font-size: 12px;
+  }
+
+  #error {
+    max-width: 40rem;
+    text-align: center;
+    color: #ff9f9f;
+  }
+  #error[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div id="screen-holder"><canvas id="screen" width="160" height="144"></canvas></div>
+
+<footer>
+  <kbd>&larr;</kbd> <kbd>&uarr;</kbd> <kbd>&darr;</kbd> <kbd>&rarr;</kbd> move,
+  <kbd>X</kbd> and <kbd>Z</kbd>, <kbd>Enter</kbd> start, <kbd>Backspace</kbd> select,
+  <kbd>F11</kbd> fullscreen
+</footer>
+
+<p id="error" hidden></p>
+
+<!-- Audio cannot start before a gesture, so this is the gesture. -->
+<button id="start" type="button">
+  <strong>{{TITLE}}</strong>
+  <span>Click or press a key to play</span>
+</button>
+
+<script type="module">
+import { WebPlayer } from './player.js';
+
+const config = {{CONFIG}};
+
+const canvas = document.getElementById('screen');
+const startButton = document.getElementById('start');
+const errorLine = document.getElementById('error');
+
+function fail(message) {
+  errorLine.textContent = message;
+  errorLine.hidden = false;
+  startButton.hidden = true;
+}
+
+async function loadRom() {
+  // A published single file carries the ROM inline; the multi-file layout
+  // fetches it from beside the page.
+  const inline = document.getElementById('rom');
+  if (inline !== null) {
+    const binary = atob(inline.textContent.trim());
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return bytes;
+  }
+
+  const response = await fetch('game.gb');
+  if (!response.ok) {
+    throw new Error('The game data could not be loaded.');
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function loadRuntime() {
+  const { default: factory } = await import('./gbsharp.js');
+
+  // With the wasm inlined there is nothing to fetch, and the page works when
+  // opened straight from disk.
+  const inline = document.getElementById('wasm');
+  if (inline === null) {
+    return factory;
+  }
+
+  const binary = atob(inline.textContent.trim());
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+
+  // locateFile as well as wasmBinary. The module resolves the wasm's path
+  // before it looks at the bytes it was handed, and resolving it means
+  // `new URL('gbsharp.wasm', import.meta.url)`, which throws when the module
+  // itself came from a blob URL. Naming the file outright skips that, and the
+  // name is never used because the bytes are already here.
+  return (options) => factory({
+    ...options,
+    wasmBinary: bytes.buffer,
+    locateFile: (path) => path,
+  });
+}
+
+const player = new WebPlayer(canvas, config);
+
+/*
+ * Published on the page so that a host embedding this can pause it, and so
+ * that a test can step it a frame at a time. Frames are otherwise driven by
+ * requestAnimationFrame, which a browser does not run for a tab nobody is
+ * looking at, and something has to be able to say "run one anyway".
+ */
+window.gbsharpPlayer = player;
+
+async function play() {
+  startButton.hidden = true;
+
+  try {
+    const [factory, rom] = await Promise.all([loadRuntime(), loadRom()]);
+    player.ensureAudio();
+    await player.start(factory, rom, config.title);
+    window.dispatchEvent(new CustomEvent('gbsharp-started'));
+  } catch (error) {
+    fail(error.message ?? String(error));
+  }
+}
+
+startButton.addEventListener('click', play, { once: true });
+window.addEventListener('keydown', play, { once: true });
+</script>
+
+</body>
+</html>

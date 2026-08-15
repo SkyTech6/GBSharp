@@ -1,0 +1,156 @@
+name: Publish to NuGet
+
+# Publishing is a deliberate act, so this runs only when a person starts it
+# and picks the bump. The version published is still whatever VersionPrefix
+# in Directory.Build.props says: the "Bump version" step below computes the
+# new number from version_bump and commits it before anything is built, so
+# the tree is updated first and every published version remains a commit
+# somebody can check out, rather than a number that only ever lived in a
+# workflow input.
+on:
+  workflow_dispatch:
+    inputs:
+      version_bump:
+        description: Which part of Major.Minor.Patch to increment
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+        default: patch
+        required: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    # Referencing an environment lets branch protections and required
+    # reviewers gate the push later without touching this file, and the
+    # nuget.org Trusted Publishing policy pins it, so a token minted by any
+    # other workflow or environment is refused.
+    environment: nuget
+
+    # id-token is what NuGet/login exchanges for a short-lived nuget.org API
+    # key (Trusted Publishing). There is no long-lived secret to leak: the
+    # trust is the signed OIDC claim that this exact repository, workflow and
+    # environment is running. contents: write is for the version-bump commit
+    # below, the only thing this workflow ever pushes.
+    permissions:
+      id-token: write
+      contents: write
+
+    steps:
+      # Submodules for the same reason as ci.yml: the emulator compatibility
+      # test ROMs. Publishing runs the full suite: a version that ships is a
+      # version that passed everything CI would have required.
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      # Computes the new VersionPrefix from the chosen bump and commits it
+      # before anything is built or packed, so the assemblies, the packages,
+      # and nuget.org all end up carrying the same number the tree has.
+      - name: Bump version
+        id: bump
+        shell: pwsh
+        run: |
+          $path = 'Directory.Build.props'
+          $content = Get-Content $path -Raw
+          if ($content -notmatch '<VersionPrefix>(\d+)\.(\d+)\.(\d+)</VersionPrefix>') {
+            throw "Could not find a <VersionPrefix>Major.Minor.Patch</VersionPrefix> in $path"
+          }
+          $major, $minor, $patch = [int]$Matches[1], [int]$Matches[2], [int]$Matches[3]
+          switch ('${{ inputs.version_bump }}') {
+            'major' { $major++; $minor = 0; $patch = 0 }
+            'minor' { $minor++; $patch = 0 }
+            'patch' { $patch++ }
+          }
+          $newVersion = "$major.$minor.$patch"
+          $content = $content -replace '<VersionPrefix>\d+\.\d+\.\d+</VersionPrefix>', "<VersionPrefix>$newVersion</VersionPrefix>"
+          Set-Content -Path $path -Value $content -NoNewline
+
+          # The SDK's package README is its nuget.org landing page, and the
+          # one snippet on it names a version. Stamping it here is what keeps
+          # that snippet true for the version being published rather than for
+          # whichever one happened to be current when somebody wrote it.
+          $readme = 'GBSharp.Sdk/README.md'
+          $readmeContent = Get-Content $readme -Raw
+          if ($readmeContent -notmatch 'GBSharp\.Sdk/\d+\.\d+\.\d+') {
+            throw "Could not find a 'GBSharp.Sdk/Major.Minor.Patch' SDK reference to stamp in $readme"
+          }
+          $readmeContent = $readmeContent -replace 'GBSharp\.Sdk/\d+\.\d+\.\d+', "GBSharp.Sdk/$newVersion"
+          Set-Content -Path $readme -Value $readmeContent -NoNewline
+
+          "version=$newVersion" >> $env:GITHUB_OUTPUT
+
+      - name: Commit version bump
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Directory.Build.props GBSharp.Sdk/README.md
+          git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
+          git push origin HEAD:${{ github.ref }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install SDL2
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-2.0-0
+
+      - name: Fetch GBDK-2020
+        shell: pwsh
+        run: ./tools/get-gbdk.ps1
+
+      - name: Fetch the emulator runtime
+        shell: pwsh
+        run: ./tools/get-emulator.ps1
+
+      - name: Restore
+        run: dotnet restore GBSharp.slnx
+
+      - name: Build
+        run: dotnet build GBSharp.slnx --no-restore --configuration Release
+
+      - name: Test
+        env:
+          GBSHARP_REQUIRE_GBDK: '1'
+          GBSHARP_REQUIRE_EMULATOR: '1'
+        run: dotnet test GBSharp.slnx --no-build --configuration Release
+
+      - name: Pack
+        run: dotnet pack GBSharp.slnx --no-build --configuration Release -o packages
+
+      # Packing is an allowlist (IsPackable in Directory.Build.props), and this
+      # is the check that keeps it one: a fifth package appearing here means a
+      # project opted in that was never meant to be published.
+      - name: Verify the package set
+        shell: pwsh
+        run: |
+          $expected = @('gbsharp', 'GBSharp.Sdk', 'GBSharp.Framework', 'GBSharp.Analyzers') | Sort-Object
+          $actual = Get-ChildItem packages/*.nupkg |
+            ForEach-Object { $_.Name -replace '\.\d+\.\d+\.\d+(-[^.]+(\.[^.]+)*)?\.nupkg$', '' } |
+            Sort-Object
+          if (Compare-Object $expected $actual) {
+            throw "Expected exactly [$($expected -join ', ')] but packed [$($actual -join ', ')]."
+          }
+
+      # Exchanges this job's OIDC token for a short-lived API key, under the
+      # Trusted Publishing policy registered on nuget.org for this repository,
+      # workflow file and environment. NUGET_USERNAME is a repository
+      # variable holding the nuget.org account name the policy belongs to.
+      - name: NuGet login (Trusted Publishing)
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: ${{ vars.NUGET_USERNAME }}
+
+      # --skip-duplicate makes a re-run of a partly failed publish safe: the
+      # versions that already went up are skipped rather than erroring, and
+      # the ones that did not go up the first time are pushed.
+      - name: Push all four packages
+        run: >
+          dotnet nuget push 'packages/*.nupkg'
+          --source https://api.nuget.org/v3/index.json
+          --api-key ${{ steps.login.outputs.NUGET_API_KEY }}
+          --skip-duplicate

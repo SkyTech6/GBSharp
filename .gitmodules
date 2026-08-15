@@ -1,0 +1,3 @@
+[submodule "extern/gbsharp-emulator"]
+	path = extern/gbsharp-emulator
+	url = https://github.com/SkyTech6/gbsharp-emulator

@@ -1,0 +1,6 @@
+- name: CLI commands
+  href: cli.md
+- name: The project file (gbsharp.json)
+  href: gbsharp-json.md
+- name: Diagnostics
+  href: diagnostics/

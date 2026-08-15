@@ -1,0 +1,20 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="GBSharp.Rules/GBSharp.Rules.csproj" />
+    <Project Path="GBSharp.Analyzers/GBSharp.Analyzers.csproj" />
+    <Project Path="GBSharp.Compiler/GBSharp.Compiler.csproj" />
+    <Project Path="GBSharp.Backend.GBDK/GBSharp.Backend.GBDK.csproj" />
+    <Project Path="GBSharp.Assets/GBSharp.Assets.csproj" />
+    <Project Path="GBSharp.Framework/GBSharp.Framework.csproj" />
+    <Project Path="GBSharp.Emulator/GBSharp.Emulator.csproj" />
+    <Project Path="GBSharp.Player.Web/GBSharp.Player.Web.csproj" />
+    <Project Path="GBSharp.Sdk/GBSharp.Sdk.csproj" />
+    <Project Path="GBSharp.CLI/GBSharp.CLI.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="GBSharp.Tests/GBSharp.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/GBSharp.DocsGen/GBSharp.DocsGen.csproj" />
+  </Folder>
+</Solution>

@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Assets</RootNamespace>
+    <Description>
+      Turns images into Game Boy tiles, maps and palettes. Knows about the
+      hardware's formats but not about any backend's output format, and takes
+      no package dependencies: the PNG decoder is here so that every rejection
+      can be a GB# diagnostic rather than someone else's exception.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GBSharp.Compiler\GBSharp.Compiler.csproj" />
+  </ItemGroup>
+
+</Project>

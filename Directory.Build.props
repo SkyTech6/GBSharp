@@ -1,0 +1,35 @@
+<Project>
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>false</EnforceCodeStyleInBuild>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Product>GB#</Product>
+    <Authors>GB# Contributors</Authors>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <RepositoryUrl>https://github.com/SkyTech6/GBSharp</RepositoryUrl>
+    <!-- Set once here so every packable project (gbsharp, GBSharp.Sdk, and
+         GBSharp.Framework / GBSharp.Analyzers when they are published) carries
+         the same license. MIT deliberately: the runtime shim compiles into
+         every game ROM, so the license must impose nothing on shipped games,
+         and the emulator fork is already MIT via binjgb. -->
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://skytech6.github.io/GBSharp/</PackageProjectUrl>
+
+    <!-- Publishing is an allowlist. Exactly four packages are meant for a
+         feed: gbsharp (the tool), GBSharp.Sdk, GBSharp.Framework and
+         GBSharp.Analyzers, the three a scaffolded project's design-time
+         .csproj restores against, and each sets IsPackable=true itself. Everything
+         else is an implementation detail that already ships inside the
+         gbsharp tool; packing it would publish surface area nobody is meant
+         to depend on. -->
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+</Project>

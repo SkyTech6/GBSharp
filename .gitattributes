@@ -1,0 +1,18 @@
+* text=auto
+
+*.cs      text diff=csharp
+*.csproj  text
+*.slnx    text
+*.props   text
+*.json    text
+*.md      text
+*.ps1     text eol=crlf
+*.yml     text eol=lf
+*.c       text eol=lf
+*.h       text eol=lf
+
+*.gb      binary
+*.gbc     binary
+*.png     binary
+*.wav     binary
+*.zip     binary

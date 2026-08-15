@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>GB</RootNamespace>
+    <AssemblyName>GBSharp.Framework</AssemblyName>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <Description>
+      Reference assembly for GB# game code. Members are declarations only; their
+      bodies never execute and are never lowered. The GB# compiler maps each
+      [Native] member to a C symbol in the target backend.
+    </Description>
+
+    <!-- Published so a scaffolded project's design-time .csproj restores: the
+         editor binds against this package for IntelliSense. 'gbsharp build'
+         never uses it: the compiler carries its own copy of this assembly
+         inside the tool. A plain lib/netstandard2.0 package (with the XML
+         docs, which are most of its value) is exactly right for that. -->
+    <IsPackable>true</IsPackable>
+    <PackageId>GBSharp.Framework</PackageId>
+    <PackageTags>gameboy;gbc;gbdk;gbsharp;retro;csharp</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

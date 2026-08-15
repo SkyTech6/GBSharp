@@ -1,0 +1,7 @@
+{
+  "name": "Banking",
+  "target": "gbc",
+  "mbc": "mbc5+ram+battery",
+  "romBanks": 4,
+  "ramBanks": 1
+}

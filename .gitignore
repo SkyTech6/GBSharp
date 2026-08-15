@@ -1,0 +1,73 @@
+# Build output
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+
+# Locally packed NuGet packages (the README's 'dotnet pack -o packages';
+# the real ones are produced and pushed by .github/workflows/publish.yml)
+packages/
+
+# Sample / game build output
+Samples/**/build/
+
+# Published games (gbsharp publish)
+publish/
+Samples/**/publish/
+
+# Vendored toolchain (fetched by tools/get-gbdk.ps1)
+tools/gbdk/
+tools/*.zip
+tools/*.tar.gz
+
+# Vendored emulator runtime (fetched by tools/get-emulator.ps1)
+tools/emulator/
+
+# Game Boy / SDCC build artifacts
+*.gb
+*.gbc
+*.ihx
+*.map
+*.sym
+*.noi
+*.rel
+*.lst
+*.adb
+*.asm.o
+
+# Snapshot test output
+*.received.*
+
+# Documentation build output (docs/build-docs.ps1)
+docs/_site/
+docs/api/*
+!docs/api/index.md
+docs/reference/diagnostics/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+
+# Agentic / AI coding tool folders
+.claude/
+.cursor/
+.windsurf/
+.aider/
+.aider*
+.continue/
+.cline/
+.roo/
+.codeium/
+.copilot/
+.amp/
+.warp/
+.devin/
+
+# OS
+Thumbs.db
+.DS_Store

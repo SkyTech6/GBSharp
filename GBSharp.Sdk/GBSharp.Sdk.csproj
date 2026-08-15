@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      An MSBuild SDK package: it ships props and targets, not an assembly. The
+      TargetFramework is only here to satisfy the SDK that builds it.
+    -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+
+    <!--
+      The assembly this produces is empty and unused; only Sdk/ is packed.
+      NU5128 is the warning that a package with no lib folder is unusual, which
+      for an MSBuild SDK is the point.
+    -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <IsPackable>true</IsPackable>
+    <PackageId>GBSharp.Sdk</PackageId>
+    <PackageType>MSBuildSdk</PackageType>
+    <PackageTags>gameboy;gbc;gbdk;gbsharp;msbuildsdk</PackageTags>
+    <Description>
+      The project SDK for GB# games. Gives a game project analyzers, the
+      framework reference, and an editor that understands the code, in three
+      lines of csproj.
+
+      Carries no GB# configuration: that stays in gbsharp.json.
+    </Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="Sdk\**" Pack="true" PackagePath="Sdk" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

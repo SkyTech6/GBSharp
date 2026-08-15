@@ -1,0 +1,53 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GBSharp.Compiler\GBSharp.Compiler.csproj" />
+
+    <!--
+      Referenced as an ordinary assembly, not as an analyzer: these tests drive
+      it through WithAnalyzers to compare what it reports against what a full
+      build reports. Adding it as an analyzer would instead run it over the test
+      project's own source, which is not GB# code.
+    -->
+    <ProjectReference Include="..\GBSharp.Analyzers\GBSharp.Analyzers.csproj"
+                      ReferenceOutputAssembly="true"
+                      OutputItemType="Content"
+                      SetTargetFramework="TargetFramework=netstandard2.0" />
+    <ProjectReference Include="..\GBSharp.Backend.GBDK\GBSharp.Backend.GBDK.csproj" />
+    <ProjectReference Include="..\GBSharp.Assets\GBSharp.Assets.csproj" />
+    <ProjectReference Include="..\GBSharp.Framework\GBSharp.Framework.csproj" />
+
+    <!--
+      Runs the ROMs these tests build. Needs the native runtime that
+      tools/get-emulator.ps1 fetches, so the tests using it skip themselves
+      when it is absent, the way the GBDK ones do.
+    -->
+    <ProjectReference Include="..\GBSharp.Emulator\GBSharp.Emulator.csproj" />
+
+    <!--
+      GameProject lives in the CLI project rather than a shared library
+      (thesis section 21: the project format is deliberately not settled
+      into an SDK yet). Referenced here only to unit test gbsharp.json
+      parsing and validation directly, not to invoke the CLI.
+    -->
+    <ProjectReference Include="..\GBSharp.CLI\GBSharp.CLI.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

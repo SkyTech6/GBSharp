@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Emulator</RootNamespace>
+    <Description>
+      The GB# emulator runtime: P/Invoke over the gbsharp C ABI, and the loader
+      that finds the native library fetched by tools/get-emulator.ps1.
+    </Description>
+    <!-- The framebuffer is handed over as a pointer and read as a span without
+         copying, which is the point of it being a pointer. -->
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+</Project>

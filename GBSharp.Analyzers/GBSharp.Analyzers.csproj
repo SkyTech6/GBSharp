@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>GBSharp.Analyzers</RootNamespace>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+
+    <!--
+      Both assemblies ship under analyzers/dotnet/cs rather than lib/, same as
+      any Roslyn analyzer package, so there is deliberately no lib or ref folder
+      for NuGet to match against a target framework. Same reasoning as
+      GBSharp.Sdk.csproj, which packs Sdk/ instead of lib/ for the same reason.
+    -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+
+    <!--
+      RS2002 checks the release-tracking files against the descriptors it can
+      find by reading the source. SupportedDiagnostics here is built from
+      GBRuleCatalog rather than written out, which that check cannot see
+      through, so it reports every id as unimplemented.
+
+      Hand-writing the list would satisfy it and cost the property the design
+      rests on: deriving the list is what stops a rule being declared without
+      being implemented, or implemented without being declared. The real
+      guarantee is AnalyzerParityTests, which compares what this reports against
+      what a full build reports. RS2008 stays on, so the release files are still
+      required and the ids still permanent.
+    -->
+    <NoWarn>$(NoWarn);RS2002</NoWarn>
+    <Description>
+      Roslyn analyzers reporting GB# diagnostics in the editor, before a build.
+
+      The rules themselves live in GBSharp.Rules and are shared with the
+      compiler, so an id reported here means exactly what it means in a build.
+    </Description>
+
+    <!-- Published so a scaffolded project's design-time .csproj restores and
+         GB# diagnostics appear as you type. DevelopmentDependency marks it as
+         tooling: consumers that omit PrivateAssets="all" get it defaulted,
+         so the analyzer never flows transitively. -->
+    <IsPackable>true</IsPackable>
+    <PackageId>GBSharp.Analyzers</PackageId>
+    <PackageTags>gameboy;gbc;gbdk;gbsharp;analyzers;roslyn</PackageTags>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      ExcludeAssets="runtime" is what stops a copy of Roslyn shipping beside the
+      analyzer: the IDE has already loaded one, and two would collide.
+    -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"
+                      VersionOverride="4.8.0"
+                      PrivateAssets="all"
+                      ExcludeAssets="runtime" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      PrivateAssets="all" keeps this off the packed dependency list. Rules.dll
+      is bundled directly into analyzers/dotnet/cs below, rather than published
+      as its own package, so a NuGet dependency on "GBSharp.Rules" would point
+      a consumer at a package that is never produced.
+    -->
+    <ProjectReference Include="..\GBSharp.Rules\GBSharp.Rules.csproj" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Required by RS2008; also the permanent record of which ids exist. -->
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Both assemblies ship in the analyzer folder, and nothing else does. -->
+    <None Include="$(OutputPath)\GBSharp.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="$(OutputPath)\GBSharp.Rules.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

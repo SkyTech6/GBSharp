@@ -1,0 +1,12 @@
+- name: Move a sprite
+  href: move-a-sprite.md
+- name: Backgrounds and tilemaps
+  href: backgrounds-and-tilemaps.md
+- name: Drawing text
+  href: drawing-text.md
+- name: Metasprites
+  href: metasprites.md
+- name: Many objects
+  href: many-objects.md
+- name: Banking a big game
+  href: banking-a-big-game.md

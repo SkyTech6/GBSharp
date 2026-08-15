@@ -1,0 +1,93 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'GBSharp.Framework/**'
+      - 'GBSharp.Rules/**'
+      - 'tools/GBSharp.DocsGen/**'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/docs.yml'
+  pull_request:
+    paths:
+      - 'docs/**'
+      - 'GBSharp.Framework/**'
+      - 'GBSharp.Rules/**'
+      - 'tools/GBSharp.DocsGen/**'
+      - '.config/dotnet-tools.json'
+      - '.github/workflows/docs.yml'
+  # Deploy is gated on this, not on push to main: the live site should only
+  # ever show what's actually published to NuGet, not whatever has landed on
+  # main since the last release. See the `deploy` job below.
+  workflow_run:
+    workflows: ['Publish to NuGet']
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    # Skip a build triggered by a failed publish: nothing changed that's
+    # worth regenerating the site for.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    steps:
+      # For workflow_run, github.sha resolves to the tip of the default
+      # branch at trigger time, which may have moved past the commit that
+      # was actually published. head_sha pins the checkout to that exact
+      # commit so the docs match what's live on NuGet.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The site is generated in three steps, in this order, because each feeds
+      # the next: the diagnostics reference is generated from the compiler's
+      # descriptors, docfx builds the site from the markdown plus the
+      # framework's XML docs, and the llms.txt files are generated from the
+      # built site. docs/build-docs.ps1 is the same sequence for a local build.
+      - name: Build the framework XML docs
+        run: dotnet build GBSharp.Framework/GBSharp.Framework.csproj -c Release
+
+      - name: Generate the diagnostics reference
+        run: dotnet run --project tools/GBSharp.DocsGen -c Release -- diagnostics docs/reference/diagnostics
+
+      - name: Build the site
+        run: |
+          dotnet tool restore
+          dotnet docfx docs/docfx.json --warningsAsErrors
+
+      - name: Generate llms.txt
+        run: dotnet run --project tools/GBSharp.DocsGen -c Release -- llms docs docs/_site GBSharp.Framework/bin/Release/netstandard2.0/GBSharp.Framework.xml
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_site
+
+  # Deploys only when a publish actually succeeded (or someone forces it by
+  # hand); push/PR runs stop after proving the site builds.
+  deploy:
+    if: >
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,34 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!--
+      netstandard2.0 because a Roslyn analyzer is loaded by the IDE's own
+      process, which is not .NET 10. Everything an analyzer and the compiler
+      must agree on lives here, so it has to be loadable by both.
+    -->
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <RootNamespace>GBSharp.Rules</RootNamespace>
+    <Description>
+      The rules GB# enforces, and the diagnostics it reports them with. Shared
+      by the compiler and by the Roslyn analyzers so a GBS id cannot come to mean
+      two different things.
+
+      Touches no files and knows nothing of the intermediate representation: an
+      analyzer runs on every keystroke and cannot read from disk, and the IR is
+      the compiler's business.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      A much lower floor than the compiler's, and no runtime assets: an analyzer
+      must never ship a copy of Roslyn beside itself, because the host has
+      already loaded one and the two would collide.
+    -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp"
+                      VersionOverride="4.8.0"
+                      PrivateAssets="all"
+                      ExcludeAssets="runtime" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,28 @@
+- name: The language subset
+  href: language-subset.md
+- name: Structs
+  href: structs.md
+- name: Assets
+  href: assets.md
+- name: Data in ROM
+  href: rom-data.md
+- name: Banking
+  href: banking.md
+- name: Memory and budgets
+  href: memory-and-budgets.md
+- name: Drawing text
+  href: text.md
+- name: Audio
+  href: audio.md
+- name: Configuring diagnostics
+  href: diagnostics-configuration.md
+- name: Profiling and cost
+  href: profiling-and-cost.md
+- name: Publishing a game
+  href: publishing.md
+- name: IDE analyzers
+  href: ide-analyzers.md
+- name: Emulators
+  href: emulators.md
+- name: The native escape hatch
+  href: native-escape-hatch.md

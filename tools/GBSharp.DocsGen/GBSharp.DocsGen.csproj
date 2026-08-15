@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>
+      Generates the parts of the documentation site that must never drift from
+      the code: the diagnostics reference (from GBSharp.Rules descriptors) and
+      the llms.txt / llms-full.txt files (from the built site's sources).
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\GBSharp.Rules\GBSharp.Rules.csproj" />
+  </ItemGroup>
+
+</Project>

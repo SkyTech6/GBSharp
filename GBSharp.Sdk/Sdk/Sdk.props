@@ -1,0 +1,36 @@
+<Project>
+
+  <!--
+    GB# game projects.
+
+    This project exists so an IDE can bind and analyse the code. It is not how a
+    ROM is produced: 'gbsharp build' is, and Sdk.targets blocks a real build to
+    keep that unambiguous.
+
+    Deliberately carries no GB# configuration. The target, name, emulator, banks
+    and diagnostics all live in gbsharp.json, which stays the single source of
+    truth; duplicating any of it here would create two places to disagree.
+  -->
+
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
+
+  <PropertyGroup>
+    <!--
+      netstandard2.0 because game code is never executed by .NET. It only has to
+      bind, and the lowest common target keeps the reference set small enough
+      that nothing in the BCL looks available when it is not.
+    -->
+    <TargetFramework Condition="'$(TargetFramework)' == ''">netstandard2.0</TargetFramework>
+
+    <!-- Game code is not annotated, and warnings about it would be noise. -->
+    <Nullable Condition="'$(Nullable)' == ''">disable</Nullable>
+
+    <GenerateAssemblyInfo Condition="'$(GenerateAssemblyInfo)' == ''">false</GenerateAssemblyInfo>
+    <GenerateDocumentationFile Condition="'$(GenerateDocumentationFile)' == ''">false</GenerateDocumentationFile>
+    <EnableDefaultNoneItems Condition="'$(EnableDefaultNoneItems)' == ''">false</EnableDefaultNoneItems>
+
+    <!-- An [Asset] field is written by the build, never in source. -->
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+  </PropertyGroup>
+
+</Project>

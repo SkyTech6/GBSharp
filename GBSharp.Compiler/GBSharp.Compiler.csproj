@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Compiler</RootNamespace>
+    <Description>
+      GB# frontend: Roslyn compilation host, language-subset validation,
+      IOperation lowering, the GB# intermediate representation, and diagnostics.
+      Contains no knowledge of any specific target backend.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      The diagnostics and the framework-symbol lookup live here rather than in
+      this project, because the analyzers need exactly the same ones and cannot
+      load a net10.0 assembly.
+    -->
+    <ProjectReference Include="..\GBSharp.Rules\GBSharp.Rules.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Cli</RootNamespace>
+    <AssemblyName>gbsharp</AssemblyName>
+    <Description>The gbsharp command line driver: build, run, clean, doctor.</Description>
+  </PropertyGroup>
+
+  <!-- 'dotnet tool install gbsharp' is the install story for people making
+       games, as opposed to people working on GB# itself, who clone and build.
+       The package carries the whole managed pipeline (its project references)
+       plus the lock files below; GBDK and the native emulator runtime are
+       deliberately not in it: the tool fetches them into the per-user cache
+       via the doctor command's fix option, checksum-verified against the
+       packed lock files. The license (MIT) comes from Directory.Build.props;
+       pushing to a public feed remains a deliberate, owner-confirmed act. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackAsTool>true</PackAsTool>
+    <PackageId>gbsharp</PackageId>
+    <ToolCommandName>gbsharp</ToolCommandName>
+    <PackageDescription>GB# - a statically compiled C# development environment for the Game Boy.
+Compiles a constrained subset of C# to .gb/.gbc ROMs via GBDK-2020.
+Run 'gbsharp doctor --fix' after installing to fetch the pinned toolchain.</PackageDescription>
+    <PackageProjectUrl>https://skytech6.github.io/GBSharp/</PackageProjectUrl>
+    <PackageTags>gameboy;gbc;gbdk;compiler;retro;csharp</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <!-- The pinned-toolchain lock files travel with the CLI, so an installed
+       'gbsharp' tool can fetch GBDK and the emulator runtime with no checkout
+       around it (the doctor fix option reads these when no tools/ directory is
+       found). Flat beside the assembly on purpose: a 'tools' subdirectory here
+       would shadow the checkout's own tools/ in every walk-up lookup. -->
+  <ItemGroup>
+    <None Include="..\tools\gbdk.lock.json" Link="gbdk.lock.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\tools\emulator.lock.json" Link="emulator.lock.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GBSharp.Compiler\GBSharp.Compiler.csproj" />
+    <ProjectReference Include="..\GBSharp.Backend.GBDK\GBSharp.Backend.GBDK.csproj" />
+    <ProjectReference Include="..\GBSharp.Assets\GBSharp.Assets.csproj" />
+    <ProjectReference Include="..\GBSharp.Framework\GBSharp.Framework.csproj" />
+
+    <!-- `gbsharp profile` runs the ROM it just built. Nothing else in the CLI
+         needs an emulator: `run` launches one as a process. -->
+    <ProjectReference Include="..\GBSharp.Emulator\GBSharp.Emulator.csproj" />
+
+    <!-- The web player's assets, copied beside the CLI so `publish web` can
+         assemble them. That project carries no code, so this is a dependency on
+         its content rather than on an assembly. -->
+    <ProjectReference Include="..\GBSharp.Player.Web\GBSharp.Player.Web.csproj"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Player.Web</RootNamespace>
+    <Description>
+      The GB# web player: canvas, keyboard, gamepad, WebAudio, fullscreen and
+      save persistence, over the same emulator ABI the native player uses.
+    </Description>
+    <!-- No code of its own. The deliverable is the assets, which the CLI
+         assembles into a published game. -->
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Copied beside the CLI so `gbsharp publish web` can find them the same
+         way the GBDK backend finds its runtime shim. -->
+    <None Include="Assets\**\*" CopyToOutputDirectory="PreserveNewest"
+          Link="WebPlayer\%(RecursiveDir)%(Filename)%(Extension)" />
+  </ItemGroup>
+
+</Project>

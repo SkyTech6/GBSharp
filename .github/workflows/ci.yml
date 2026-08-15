@@ -1,0 +1,130 @@
+name: CI
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: build (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    steps:
+      # The emulator submodule is only needed for its compatibility test ROMs,
+      # which the emulated tests compare screen hashes against. Normal
+      # contributors never clone it and those tests skip themselves.
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # The published-game integration tests run a real Player binary, which
+      # links SDL2 dynamically. Windows carries SDL2.dll alongside the game
+      # itself (see PlayerStub.RuntimeCompanions), but the Linux runtime
+      # expects the OS to already have it, and ubuntu-latest doesn't.
+      - name: Install SDL2
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsdl2-2.0-0
+
+      # The pinned GBDK-2020 release, checksum-verified against tools/gbdk.lock.json.
+      # Without it the integration tests skip themselves and the ROMs never get built.
+      - name: Fetch GBDK-2020
+        shell: pwsh
+        run: ./tools/get-gbdk.ps1
+
+      # The pinned emulator runtime, checksum-verified the same way. Without it
+      # the tests that run a ROM skip themselves, and a ROM that never runs is a
+      # ROM nobody has checked.
+      - name: Fetch the emulator runtime
+        shell: pwsh
+        run: ./tools/get-emulator.ps1
+
+      - name: Restore
+        run: dotnet restore GBSharp.slnx
+
+      - name: Build
+        run: dotnet build GBSharp.slnx --no-restore --configuration Release
+
+      # Both were fetched above, so an integration test that skips itself here is
+      # a bug in a lookup rather than an absent install. These make that skip a
+      # failure instead of a silent pass.
+      - name: Test
+        env:
+          GBSHARP_REQUIRE_GBDK: '1'
+          GBSHARP_REQUIRE_EMULATOR: '1'
+        run: dotnet test GBSharp.slnx --no-build --configuration Release --logger "trx;LogFileName=results.trx"
+
+      # Building the samples is the end-to-end check: it exercises the CLI, the
+      # project file, and the real GBDK toolchain rather than the in-process API.
+      - name: Build samples
+        shell: pwsh
+        run: |
+          foreach ($sample in Get-ChildItem -Path Samples -Directory) {
+            Write-Host "::group::$($sample.Name)"
+            dotnet run --project GBSharp.CLI --configuration Release --no-build -- build $sample.FullName --emit-c
+            if ($LASTEXITCODE -ne 0) { throw "$($sample.Name) failed to build" }
+            Write-Host "::endgroup::"
+          }
+
+      - name: Upload ROMs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: roms-${{ matrix.os }}
+          path: |
+            Samples/**/build/*.gb
+            Samples/**/build/*.gbc
+            Samples/**/build/*.map
+            Samples/**/build/*.sym
+            Samples/**/build/c/*.c
+            Samples/**/build/c/*.h
+          if-no-files-found: warn
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.os }}
+          path: '**/results.trx'
+          if-no-files-found: ignore
+
+  # The build job above consumes the emulator as a prebuilt binary, which is how
+  # everyone consumes it. Nobody would then notice if the pinned submodule
+  # commit stopped compiling, because nobody compiles it. This does, once, from
+  # source, so that the SHA in the submodule stays a thing that can be built and
+  # not just a thing that was built.
+  emulator-from-source:
+    name: emulator (pinned source)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Configure
+        run: cmake -S extern/gbsharp-emulator -B extern/gbsharp-emulator/out -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build both flavours
+        run: >
+          cmake --build extern/gbsharp-emulator/out --config Release
+          --target gbsharp_emulator gbsharp_emulator_debug
+
+      # SDL and imgui are deliberately not installed on this runner, so a core
+      # that grew a dependency on either could not have got this far.
+      - name: Check the boundary
+        run: >
+          python extern/gbsharp-emulator/scripts/check_gbsharp_library.py
+          extern/gbsharp-emulator/out/libgbsharp_emulator.so
+          extern/gbsharp-emulator/out/libgbsharp_emulator_debug.so

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>GBSharp.Backend.GBDK</RootNamespace>
+    <Description>
+      GB/GBC backend: emits conservative C from GB# IR and drives the
+      GBDK-2020 / SDCC toolchain to produce a ROM.
+    </Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GBSharp.Compiler\GBSharp.Compiler.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The C runtime shim is copied next to generated C at build time. -->
+    <None Include="Runtime\**\*.h" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Runtime\**\*.c" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>
