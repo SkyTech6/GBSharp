@@ -3,7 +3,7 @@
 The MSBuild project SDK for **GB#** games. Gives a game project the framework reference, the analyzers, and an editor that understands the code, in three lines of `.csproj`:
 
 ```xml
-<Project Sdk="GBSharp.Sdk/0.1.0">
+<Project Sdk="GBSharp.Sdk/1.0.0">
 </Project>
 ```
 
