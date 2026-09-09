@@ -48,13 +48,24 @@ public sealed record BuildReport(
     /// </remarks>
     public const int CurrentSchemaVersion = 1;
 
+    /// <summary>
+    /// The machine the ROM was linked for: "gb" or "pocket".
+    /// </summary>
+    /// <remarks>
+    /// Additive, so it did not bump the schema version: a script written against
+    /// version 1 reads every field it did before, and one that has never heard
+    /// of the Pocket can keep reading <c>target</c> alone.
+    /// </remarks>
+    public string Platform { get; init; } = "gb";
+
     public static BuildReport Create(
         IRModule module,
         string? romPath,
         GBTarget target,
         IReadOnlyList<GBDiagnostic> diagnostics,
         RomUsageReport? usage,
-        string? gbdkVersion)
+        string? gbdkVersion,
+        GBPlatform platform = GBPlatform.GameBoy)
     {
         RomHeader? header = romPath is null ? null : RomHeader.Read(romPath);
 
@@ -125,7 +136,10 @@ public sealed record BuildReport(
             ],
             DescribeBudgets(module, header, usage),
             DescribeCycles(module),
-            DescribeStack(module));
+            DescribeStack(module))
+        {
+            Platform = platform == GBPlatform.AnaloguePocket ? "pocket" : "gb",
+        };
     }
 
     /// <summary>

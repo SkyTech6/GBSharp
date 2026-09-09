@@ -7,7 +7,7 @@ using GBSharp.Compiler.IR;
 
 namespace GBSharp.Backend.GBDK;
 
-/// <summary>The machine a ROM is built for.</summary>
+/// <summary>The Game Boy model a ROM is built for.</summary>
 public enum GBTarget
 {
     /// <summary>Original Game Boy (DMG).</summary>
@@ -15,6 +15,31 @@ public enum GBTarget
 
     /// <summary>Game Boy Color.</summary>
     GameBoyColor,
+}
+
+/// <summary>The machine whose register map and bootstrap a ROM is linked against.</summary>
+/// <remarks>
+/// Orthogonal to <see cref="GBTarget"/>, which says which Game Boy model's
+/// features the program may use. This says which machine will load the image,
+/// and the two combine freely: a Pocket build can be a colour build.
+/// </remarks>
+public enum GBPlatform
+{
+    /// <summary>Game Boy hardware, and every emulator that imitates it.</summary>
+    GameBoy,
+
+    /// <summary>
+    /// Analogue Pocket, in the homebrew form its firmware loads.
+    /// </summary>
+    /// <remarks>
+    /// A different link rather than a different wrapper. GBDK's <c>ap</c> port
+    /// puts LCDC at 0xFF4E with its bits reversed and stamps Analogue's boot
+    /// logo in place of Nintendo's, so the image runs on a Pocket and nowhere
+    /// else: not on a Game Boy, and not in an emulator. Nothing in the C#
+    /// changes, because the remap lives entirely in the port's library and
+    /// crt0.
+    /// </remarks>
+    AnaloguePocket,
 }
 
 /// <summary>
@@ -65,6 +90,12 @@ public sealed record RomBuildOptions(
     bool KeepGeneratedC = false,
     string? GbdkPath = null)
 {
+    /// <summary>
+    /// The machine to link for. Defaults to the Game Boy, so a project that
+    /// says nothing invokes lcc exactly as it did before this existed.
+    /// </summary>
+    public GBPlatform Platform { get; init; } = GBPlatform.GameBoy;
+
     /// <summary>
     /// The mapper to declare. Ignored entirely when nothing is banked.
     /// </summary>
@@ -184,7 +215,12 @@ public sealed class RomBuilder
         CopyLibraries(options.Libraries, sourceDirectory);
         CopyLibraries(options.Includes, sourceDirectory);
 
-        string extension = options.Target == GBTarget.GameBoyColor ? ".gbc" : ".gb";
+        // The Pocket's firmware finds homebrew by extension, and it is the same
+        // extension whether or not the game is a colour one, so the platform
+        // decides this outright rather than refining the Game Boy answer.
+        string extension = options.Platform == GBPlatform.AnaloguePocket
+            ? ".pocket"
+            : options.Target == GBTarget.GameBoyColor ? ".gbc" : ".gb";
         string romPath = Path.Combine(options.OutputDirectory, module.Name + extension);
 
         int exitCode = InvokeCompiler(toolchain, module, options, sourceDirectory, files, romPath, out string toolOutput);
@@ -263,6 +299,14 @@ public sealed class RomBuilder
         out string output)
     {
         var arguments = new List<string>();
+
+        if (options.Platform == GBPlatform.AnaloguePocket)
+        {
+            // GBDK's Analogue Pocket port. First, because it selects the library
+            // and crt0 every later flag is resolved against, and it is the whole
+            // of what makes a Pocket build a Pocket build.
+            arguments.Add("-msm83:ap");
+        }
 
         if (options.Target == GBTarget.GameBoyColor)
         {

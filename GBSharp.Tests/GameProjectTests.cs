@@ -1,3 +1,4 @@
+using GBSharp.Backend.GBDK;
 using GBSharp.Cli;
 using GBSharp.Compiler.Diagnostics;
 
@@ -330,5 +331,74 @@ public sealed class GameProjectTests
         GBDiagnostic diagnostic = TestHarness.AssertReported(diagnostics, "GBS0507");
 
         Assert.Contains("OldPrototype.cs", diagnostic.Message);
+    }
+
+    [Fact]
+    public void PlatformDefaultsToTheGameBoyWhenAbsent()
+    {
+        GameProject project = GameProject.Load(CreateTempProjectDirectory());
+
+        Assert.Null(project.Platform);
+        Assert.Equal(GBPlatform.GameBoy, project.ResolvedPlatform);
+    }
+
+    [Fact]
+    public void PlatformReadsPocketFromTheProjectFile()
+    {
+        string directory = CreateTempProjectDirectory();
+        File.WriteAllText(
+            Path.Combine(directory, GameProject.FileName),
+            """
+            { "platform": "pocket" }
+            """);
+
+        GameProject project = GameProject.Load(directory);
+
+        Assert.True(project.Validate(out IReadOnlyList<GBDiagnostic> diagnostics), TestHarness.Describe(diagnostics));
+        Assert.Equal(GBPlatform.AnaloguePocket, project.ResolvedPlatform);
+    }
+
+    /// <summary>
+    /// Platform and target are separate axes, and a colour Pocket game is the
+    /// case that proves it: the Pocket runs Game Boy Color games.
+    /// </summary>
+    [Fact]
+    public void PlatformAndTargetAreIndependent()
+    {
+        string directory = CreateTempProjectDirectory();
+        File.WriteAllText(
+            Path.Combine(directory, GameProject.FileName),
+            """
+            { "target": "gbc", "platform": "pocket" }
+            """);
+
+        GameProject project = GameProject.Load(directory);
+
+        Assert.True(project.Validate(out IReadOnlyList<GBDiagnostic> diagnostics), TestHarness.Describe(diagnostics));
+        Assert.Equal(GBTarget.GameBoyColor, project.ResolvedTarget);
+        Assert.Equal(GBPlatform.AnaloguePocket, project.ResolvedPlatform);
+    }
+
+    /// <summary>
+    /// A typo must fail the build rather than fall back to the Game Boy, which
+    /// would hand somebody a .gb they expected to be a .pocket and leave the
+    /// Pocket simply not listing their game.
+    /// </summary>
+    [Fact]
+    public void ValidateRejectsAnUnrecognisedPlatform()
+    {
+        string directory = CreateTempProjectDirectory();
+        File.WriteAllText(
+            Path.Combine(directory, GameProject.FileName),
+            """
+            { "platform": "analogue" }
+            """);
+
+        GameProject project = GameProject.Load(directory);
+
+        Assert.False(project.Validate(out IReadOnlyList<GBDiagnostic> diagnostics));
+
+        GBDiagnostic diagnostic = TestHarness.AssertReported(diagnostics, "GBS0503");
+        Assert.Contains("analogue", diagnostic.Message);
     }
 }

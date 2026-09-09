@@ -27,6 +27,10 @@ public sealed class GameProject
     [JsonPropertyName("target")]
     public string? Target { get; set; }
 
+    /// <summary>"gb" or "pocket". Independent of <see cref="Target"/>.</summary>
+    [JsonPropertyName("platform")]
+    public string? Platform { get; set; }
+
     /// <summary>Path to an emulator executable for <c>gbsharp run</c>.</summary>
     [JsonPropertyName("emulator")]
     public string? Emulator { get; set; }
@@ -190,6 +194,50 @@ public sealed class GameProject
         }
     }
 
+    /// <summary>The machine to link for. Absent means the Game Boy.</summary>
+    /// <remarks>
+    /// Separate from <see cref="ResolvedTarget"/> on purpose. "Which Game Boy
+    /// model" and "which machine loads the image" are different questions, and
+    /// a Pocket build answers the second without constraining the first.
+    /// </remarks>
+    [JsonIgnore]
+    public GBPlatform ResolvedPlatform =>
+        TryParsePlatform(Platform, out GBPlatform platform) ? platform : GBPlatform.GameBoy;
+
+    /// <summary>
+    /// Parses a platform name, rejecting anything that is not exactly "gb" or
+    /// "pocket".
+    /// </summary>
+    /// <remarks>
+    /// Strict for the same reason <see cref="TryParseTarget"/> is, and with a
+    /// sharper edge: a typo falling back to the Game Boy would hand somebody a
+    /// .gb they expected to be a .pocket, and the Pocket simply would not list
+    /// it. Silence is the worst possible failure mode there.
+    /// </remarks>
+    public static bool TryParsePlatform(string? value, out GBPlatform platform)
+    {
+        platform = GBPlatform.GameBoy;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return true;
+        }
+
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "gb":
+                platform = GBPlatform.GameBoy;
+                return true;
+
+            case "pocket":
+                platform = GBPlatform.AnaloguePocket;
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     /// <summary>The mapper this project asks for. Validate first.</summary>
     [JsonIgnore]
     public MbcType ResolvedMbc => TryParseMbc(Mbc, out MbcType mbc) ? mbc : MbcType.None;
@@ -259,6 +307,15 @@ public sealed class GameProject
                 SourceSpan.None,
                 path,
                 $"'{Target}' is not a target. Use \"gb\" for the original Game Boy or \"gbc\" for Game Boy Color.");
+        }
+
+        if (!TryParsePlatform(Platform, out _))
+        {
+            bag.Report(
+                GBDiagnostics.ProjectFileInvalid,
+                SourceSpan.None,
+                path,
+                $"'{Platform}' is not a platform. Use \"gb\" for the Game Boy or \"pocket\" for the Analogue Pocket.");
         }
 
         if (!TryParseMbc(Mbc, out _))

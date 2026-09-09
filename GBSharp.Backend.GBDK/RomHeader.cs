@@ -1,5 +1,18 @@
 namespace GBSharp.Backend.GBDK;
 
+/// <summary>The boot logo at 0x104, which is also what names the linked port.</summary>
+public enum BootLogo
+{
+    /// <summary>Neither known logo: nothing will boot this.</summary>
+    Unknown,
+
+    /// <summary>Nintendo's, which the Game Boy boot ROM compares against.</summary>
+    Nintendo,
+
+    /// <summary>Analogue's, stamped by GBDK's Analogue Pocket port.</summary>
+    Analogue,
+}
+
 /// <summary>
 /// Reads and validates a Game Boy cartridge header.
 /// </summary>
@@ -18,6 +31,20 @@ public sealed class RomHeader
         0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
         0xDC, 0xCC, 0x6E, 0xE6, 0xDD, 0xDD, 0xD9, 0x99, 0xBB, 0xBB, 0x67, 0x63,
         0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
+    ];
+
+    /// <summary>The logo an Analogue Pocket checks for instead.</summary>
+    /// <remarks>
+    /// Read off a ROM linked with GBDK's <c>ap</c> port rather than transcribed
+    /// from a document, because the port's crt0 is the only thing that decides
+    /// it and there is no second source to disagree with.
+    /// </remarks>
+    private static readonly byte[] AnalogueLogo =
+    [
+        0x01, 0x10, 0xCE, 0xEF, 0x00, 0x00, 0x44, 0xAA, 0x00, 0x74, 0x00, 0x18,
+        0x11, 0x95, 0x00, 0x34, 0x00, 0x1A, 0x00, 0xD5, 0x00, 0x22, 0x00, 0x69,
+        0x6F, 0xF6, 0xF7, 0x73, 0x09, 0x90, 0xE1, 0x10, 0x44, 0x40, 0x9A, 0x90,
+        0xD5, 0xD0, 0x44, 0x30, 0xA9, 0x21, 0x5D, 0x48, 0x22, 0xE0, 0xF8, 0x60,
     ];
 
     private const int LogoOffset = 0x104;
@@ -40,7 +67,7 @@ public sealed class RomHeader
     {
         Title = ReadTitle(rom);
         IsColorEnabled = rom[CgbFlagOffset] is 0x80 or 0xC0;
-        HasValidLogo = rom.AsSpan(LogoOffset, NintendoLogo.Length).SequenceEqual(NintendoLogo);
+        Logo = ReadLogo(rom);
 
         CartridgeType = rom[CartridgeTypeOffset];
         RomSizeCode = rom[RomSizeOffset];
@@ -59,7 +86,23 @@ public sealed class RomHeader
 
     public bool IsColorEnabled { get; }
 
-    public bool HasValidLogo { get; }
+    /// <summary>Which machine's boot logo sits at 0x104, if either does.</summary>
+    /// <remarks>
+    /// Worth reporting rather than reducing to a yes/no, because the logo is the
+    /// one field that says which port linked the image. A ROM asked for as a
+    /// Game Boy build that carries Analogue's logo is a wrong-port build, and
+    /// that is a mistake no other header field can catch.
+    /// </remarks>
+    public BootLogo Logo { get; }
+
+    /// <summary>True if 0x104 holds a boot logo some machine will accept.</summary>
+    public bool HasValidLogo => Logo != BootLogo.Unknown;
+
+    /// <summary>
+    /// True if this image carries the logo <paramref name="platform"/> boots.
+    /// </summary>
+    public bool MatchesPlatform(GBPlatform platform) =>
+        Logo == (platform == GBPlatform.AnaloguePocket ? BootLogo.Analogue : BootLogo.Nintendo);
 
     public byte StoredHeaderChecksum { get; }
 
@@ -180,6 +223,18 @@ public sealed class RomHeader
     /// </remarks>
     public static RomHeader? Parse(byte[] rom) =>
         rom.Length < MinimumRomSize ? null : new RomHeader(rom);
+
+    private static BootLogo ReadLogo(byte[] rom)
+    {
+        ReadOnlySpan<byte> logo = rom.AsSpan(LogoOffset, NintendoLogo.Length);
+
+        if (logo.SequenceEqual(NintendoLogo))
+        {
+            return BootLogo.Nintendo;
+        }
+
+        return logo.SequenceEqual(AnalogueLogo) ? BootLogo.Analogue : BootLogo.Unknown;
+    }
 
     private static string ReadTitle(byte[] rom)
     {

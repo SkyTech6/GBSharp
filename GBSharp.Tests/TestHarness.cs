@@ -113,10 +113,11 @@ public static class TestHarness
         string source,
         string moduleName = "TestGame",
         GBTarget target = GBTarget.GameBoy,
-        bool annotateSource = false)
+        bool annotateSource = false,
+        GBPlatform platform = GBPlatform.GameBoy)
     {
         IRModule module = CompileModule(source, moduleName);
-        return Link(module, target, annotateSource);
+        return Link(module, target, annotateSource, platform);
     }
 
     /// <summary>Compiles source and its images all the way to a ROM. Requires GBDK.</summary>
@@ -136,11 +137,16 @@ public static class TestHarness
         return Link(result.Module!, target);
     }
 
-    private static RomBuildResult Link(IRModule module, GBTarget target, bool annotateSource = false)
+    private static RomBuildResult Link(
+        IRModule module,
+        GBTarget target,
+        bool annotateSource = false,
+        GBPlatform platform = GBPlatform.GameBoy)
     {
         string outputDirectory = Path.Combine(CreateTempDirectory(), "build");
         var options = new RomBuildOptions(outputDirectory, target, KeepGeneratedC: true)
         {
+            Platform = platform,
             AnnotateSource = annotateSource,
         };
         return new RomBuilder().Build(module, options);

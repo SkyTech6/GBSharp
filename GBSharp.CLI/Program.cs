@@ -48,6 +48,14 @@ var targetOption = new Option<string?>("--target")
     Description = "Override the project target: gb or gbc.",
 };
 
+// Separate from --target because the two are separate questions: --target says
+// which Game Boy model's features the game may use, this says which machine
+// loads the image. "--target gbc --platform pocket" is a colour Pocket game.
+var platformOption = new Option<string?>("--platform")
+{
+    Description = "Override the project platform: gb or pocket (Analogue Pocket).",
+};
+
 var gbdkOption = new Option<string?>("--gbdk-path")
 {
     Description = "GBDK-2020 install root. Overrides GBDK_HOME and the vendored copy.",
@@ -66,6 +74,7 @@ buildCommand.Add(emitIrOption);
 buildCommand.Add(annotateSourceOption);
 buildCommand.Add(outOption);
 buildCommand.Add(targetOption);
+buildCommand.Add(platformOption);
 buildCommand.Add(gbdkOption);
 buildCommand.Add(reportJsonOption);
 buildCommand.SetAction(parseResult => Build(
@@ -77,6 +86,7 @@ buildCommand.SetAction(parseResult => Build(
     parseResult.GetValue(targetOption),
     parseResult.GetValue(gbdkOption),
     launch: false,
+    platformOverride: parseResult.GetValue(platformOption),
     reportJson: parseResult.GetResult(reportJsonOption) is null
         ? null
         : parseResult.GetValue(reportJsonOption) ?? string.Empty));
@@ -331,7 +341,9 @@ static int New(string name, string template, string? target, string? outputDirec
 /// </remarks>
 static int Analyze(string path, string? targetOverride, bool assetsOnly)
 {
-    if (!TryLoadProject(path, targetOverride, out GameProject? project, out IReadOnlyList<string> sources))
+    // No platform override: analysis never links, so which port would have been
+    // used cannot change a single diagnostic.
+    if (!TryLoadProject(path, targetOverride, null, out GameProject? project, out IReadOnlyList<string> sources))
     {
         return 1;
     }
@@ -368,6 +380,7 @@ static int Analyze(string path, string? targetOverride, bool assetsOnly)
 static bool TryLoadProject(
     string path,
     string? targetOverride,
+    string? platformOverride,
     out GameProject? project,
     out IReadOnlyList<string> sources)
 {
@@ -387,6 +400,11 @@ static bool TryLoadProject(
         // validated by the same rule, rather than being trusted because it came
         // from a command line.
         loaded.Target = targetOverride;
+    }
+
+    if (platformOverride is { Length: > 0 })
+    {
+        loaded.Platform = platformOverride;
     }
 
     // Written unconditionally: validation reports warnings the build can
@@ -429,6 +447,19 @@ static CompilationRequest CreateRequest(GameProject project, IReadOnlyList<strin
             sources[0]),
     };
 
+/// <summary>
+/// Names the command that cannot accept a Pocket build, or null if it can.
+/// </summary>
+/// <remarks>
+/// One place rather than three guards, because all three fail for the identical
+/// reason and a reason given three ways drifts into three reasons.
+/// </remarks>
+static string? DescribeWhatCannotRunPocket(bool launch, string? publishRid, int profileFrames) =>
+    launch ? "'gbsharp run' cannot launch"
+    : publishRid is { Length: > 0 } ? "'gbsharp publish' cannot wrap"
+    : profileFrames > 0 ? "'gbsharp profile' cannot measure"
+    : null;
+
 static int Build(
     string path,
     bool emitC,
@@ -442,14 +473,29 @@ static int Build(
     string? publishRid = null,
     string? emulator = null,
     bool singleFile = false,
-    int profileFrames = 0)
+    int profileFrames = 0,
+    string? platformOverride = null)
 {
-    if (!TryLoadProject(path, targetOverride, out GameProject? loaded, out IReadOnlyList<string> sources))
+    if (!TryLoadProject(path, targetOverride, platformOverride, out GameProject? loaded, out IReadOnlyList<string> sources))
     {
         return 1;
     }
 
     GameProject project = loaded!;
+
+    // Checked before a single file is parsed, because the answer cannot change
+    // and a developer who asked for the impossible should not wait for a link
+    // to find out. A Pocket image is not a Game Boy image: LCDC has moved, so
+    // there is nothing that could run it here.
+    if (project.ResolvedPlatform == GBPlatform.AnaloguePocket &&
+        DescribeWhatCannotRunPocket(launch, publishRid, profileFrames) is { } blocked)
+    {
+        Console.Error.WriteLine(
+            $"error: {blocked} an Analogue Pocket build. It runs on Pocket hardware and " +
+            "nowhere else, so there is no emulator or Player that could load it.");
+        Console.Error.WriteLine("Use 'gbsharp build' to produce the .pocket file.");
+        return 1;
+    }
 
     string buildDirectory = outputDirectory is { Length: > 0 }
         ? Path.GetFullPath(outputDirectory)
@@ -483,6 +529,7 @@ static int Build(
 
     var options = new RomBuildOptions(buildDirectory, project.ResolvedTarget, emitC, gbdkPath)
     {
+        Platform = project.ResolvedPlatform,
         Cartridge = project.ResolvedMbc,
         RomBankCount = project.RomBanks,
         RamBankCount = project.RamBanks,
@@ -515,10 +562,17 @@ static int Build(
         project.ResolvedTarget,
         allDiagnostics,
         build.Usage,
-        toolchain?.Version);
+        toolchain?.Version,
+        project.ResolvedPlatform);
 
     ConsoleReporter.WriteBuildReport(
-        report, result.Module, build.RomPath, project.ResolvedTarget, allDiagnostics, build.Usage);
+        report,
+        result.Module,
+        build.RomPath,
+        project.ResolvedTarget,
+        allDiagnostics,
+        build.Usage,
+        project.ResolvedPlatform);
 
     if (reportJson is not null)
     {

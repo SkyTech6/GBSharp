@@ -39,7 +39,7 @@ Created MyGame in G:\games\MyGame
 ## gbsharp build
 
 ```
-gbsharp build [<path>] [--emit-c] [--emit-ir] [--annotate-source] [--out <dir>] [--target <target>] [--gbdk-path <dir>] [--report-json [<file>]]
+gbsharp build [<path>] [--emit-c] [--emit-ir] [--annotate-source] [--out <dir>] [--target <target>] [--platform <platform>] [--gbdk-path <dir>] [--report-json [<file>]]
 ```
 
 Compiles a GB# project into a ROM: parses the C#, validates it against the GB# subset, lowers it to IR, generates C, and hands that to GBDK-2020. The ROM, the linker's map and the `.sym` symbol file land in the output directory.
@@ -52,6 +52,7 @@ Compiles a GB# project into a ROM: parses the C#, validates it against the GB# s
 | `--annotate-source` | off | Comment every generated C statement with the C# line that produced it, and write `sourcemap.json` alongside the generated C. One code path produces both, so the comments and the JSON cannot disagree. |
 | `--out`, `-o` | `<project>/build` | Output directory. |
 | `--target` | project setting | Override the project target: `gb` or `gbc`. The override goes through the same validation as the project file's own setting. |
+| `--platform` | project setting | Override the project platform: `gb` or `pocket`. Independent of `--target`; see [the Analogue Pocket](#the-analogue-pocket) below. |
 | `--gbdk-path` | see below | GBDK-2020 install root. Overrides `GBDK_HOME` and the vendored copy. |
 | `--report-json [<file>]` | off | Write the build report as JSON. Given no value, it defaults to `<out>/report.json`. |
 
@@ -86,6 +87,37 @@ Generated C: Samples/Background/build/c  (2 files)
 ```
 
 The cycle-estimate and call-stack sections of the report are explained in [Profiling and cost](../guides/profiling-and-cost.md).
+
+### The Analogue Pocket
+
+```
+gbsharp build --platform pocket
+```
+
+```
+Output: MyGame/build/MyGame.pocket
+```
+
+The Pocket loads homebrew in its own format, and the difference is real rather than cosmetic: LCDC moves from `$FF40` to `$FF4E` with its bits reversed, and the cartridge header carries Analogue's boot logo instead of Nintendo's. GBDK-2020 ships that as its `ap` port, so a Pocket build is the same C# through the same pipeline with a different library and `crt0` linked in. Nothing in your game changes.
+
+Copy the `.pocket` file to your Pocket's microSD card and it appears in the handheld's own menu. Analogue put homebrew support under the GB Studio branding, so the folder it looks in is named `GB Studio` and the games are listed under Tools → GB Studio → Play Creations; the name is Analogue's, and GB Studio itself is not involved. No jailbreak and no openFPGA core are needed.
+
+`--platform` and `--target` are separate questions and combine freely: `--target gbc --platform pocket` is a Game Boy Color game in Pocket form, and the report says so.
+
+```
+Target                    Game Boy Color
+Platform                  Analogue Pocket
+```
+
+A Pocket ROM runs on Pocket hardware and nowhere else, because no Game Boy and no emulator has an LCDC at `$FF4E`. `run`, `profile` and `publish` therefore refuse a Pocket build outright rather than producing something that cannot start, and they refuse it before compiling:
+
+```
+error: 'gbsharp run' cannot launch an Analogue Pocket build. It runs on Pocket
+hardware and nowhere else, so there is no emulator or Player that could load it.
+Use 'gbsharp build' to produce the .pocket file.
+```
+
+Develop and debug as a Game Boy build, which is what every emulator and the GB# Player can run, and switch platform when you want the file for the hardware.
 
 ## gbsharp run
 

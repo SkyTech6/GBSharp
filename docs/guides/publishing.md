@@ -73,6 +73,16 @@ Without `--single-file` you get a folder to upload to any static host. That layo
 
 The web player is the native one in a different room: canvas instead of a window, WebAudio instead of a sound device, IndexedDB instead of an application data directory, and the same emulator ABI underneath. Both are paced by the Game Boy's own 59.7275 Hz rather than by the display, so a game does not run 2.4 times too fast on a 144 Hz monitor. Keyboard and gamepad both work; saves survive a reload.
 
+## The Analogue Pocket is not a publish target
+
+It looks like it should be one, and it is not. Every target above takes one ROM and wraps a player around it. The Pocket already is the player: it needs a *different ROM*, linked against GBDK's `ap` port, with LCDC moved to `$FF4E` and Analogue's boot logo in the header. That is a build-time decision, not a packaging one, so it lives on `build`:
+
+```bash
+gbsharp build --platform pocket
+```
+
+`publish` refuses a Pocket project rather than wrapping an image no Player could ever load. See [the CLI reference](../reference/cli.md#the-analogue-pocket) for what to do with the `.pocket` file.
+
 ## Related
 
 - [Running your game](emulators.md): the same Player is what `gbsharp run` launches during development.

@@ -20,6 +20,18 @@ The machine to build for: `"gb"` for the original Game Boy, `"gbc"` for Game Boy
 
 Parsing is deliberately strict: anything other than exactly `gb` or `gbc` is a validation error rather than a fallback to the default. Treating an unrecognised value as the default would turn a typo into a successful build of the wrong machine: a DMG ROM from a project that asked for colour, discovered only when the palettes are missing on hardware.
 
+## platform
+
+**Type:** string, `"gb"` or `"pocket"`. **Default:** `"gb"`.
+
+Which machine loads the image: `"gb"` for a Game Boy (and every emulator that imitates one), `"pocket"` for an Analogue Pocket. The `--platform` option on `gbsharp build` overrides this, through the same validation.
+
+This is a separate question from `target`, and the two combine freely. `target` says which Game Boy model's features the game may use; `platform` says which machine will load the file. A project with `"target": "gbc"` and `"platform": "pocket"` is a Game Boy Color game in Pocket form.
+
+Setting `"pocket"` links GBDK-2020's `ap` port instead of its Game Boy one, which puts LCDC at `$FF4E` with reversed bits and stamps Analogue's boot logo. The output is `<name>.pocket`. None of this touches your C#. Because such an image runs on Pocket hardware and nowhere else, `run`, `profile` and `publish` refuse a project set to `"pocket"` rather than producing something that cannot start; develop against `"gb"` and switch when you want the file for the hardware. See [the CLI reference](cli.md#the-analogue-pocket).
+
+Parsing is strict for the same reason as `target`, with a sharper edge: a typo falling back to the Game Boy would hand you a `.gb` you expected to be a `.pocket`, and the Pocket would simply not list your game.
+
 ## emulator
 
 **Type:** string. **Default:** unset.

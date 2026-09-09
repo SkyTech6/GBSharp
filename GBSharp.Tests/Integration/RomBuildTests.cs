@@ -58,7 +58,11 @@ public sealed class RomBuildTests
 
         // These three together are what "this ROM boots" means without an
         // emulator: the boot ROM compares the logo and the header checksum.
-        Assert.True(header!.HasValidLogo, "the Nintendo logo must be intact");
+        // Nintendo's specifically, not merely "a logo something would boot":
+        // the logo is the one header field that names the port that linked
+        // this, so asserting the exact one catches a Pocket build arriving
+        // where a Game Boy build was asked for.
+        Assert.Equal(BootLogo.Nintendo, header!.Logo);
         Assert.Equal(header.ComputedHeaderChecksum, header.StoredHeaderChecksum);
         Assert.Equal(header.ComputedGlobalChecksum, header.StoredGlobalChecksum);
         Assert.True(header.IsValid, $"header should be valid: {header}");
@@ -100,6 +104,77 @@ public sealed class RomBuildTests
         Assert.True(header!.IsColorEnabled, "a gbc build must mark the cartridge as Color compatible");
         Assert.True(header.IsValid);
     }
+
+    /// <summary>
+    /// A Pocket build is a real link against GBDK's <c>ap</c> port, not a
+    /// renamed Game Boy ROM.
+    /// </summary>
+    /// <remarks>
+    /// The extension proves nothing on its own, so the logo is what is asserted:
+    /// it comes from the port's crt0, so carrying Analogue's means the ap
+    /// library really did link. The <see cref="PocketBuildMovesLcdcToItsPocketAddress"/>
+    /// companion then checks the half that actually makes the game work.
+    /// </remarks>
+    [Fact]
+    public void PocketBuildCarriesAnaloguesBootLogoAndExtension()
+    {
+        if (SkipWithoutGbdk())
+        {
+            return;
+        }
+
+        RomBuildResult build = TestHarness.BuildRom(
+            TestHarness.Program("        Display.Enable();"),
+            platform: GBPlatform.AnaloguePocket);
+
+        Assert.True(build.Succeeded, TestHarness.Describe(build.Diagnostics));
+        Assert.Equal(".pocket", Path.GetExtension(build.RomPath));
+
+        RomHeader? header = RomHeader.Read(build.RomPath!);
+
+        Assert.NotNull(header);
+        Assert.Equal(BootLogo.Analogue, header!.Logo);
+        Assert.True(header.MatchesPlatform(GBPlatform.AnaloguePocket));
+        Assert.False(header.MatchesPlatform(GBPlatform.GameBoy));
+
+        // The checksums are still the Game Boy's, computed over the header the
+        // Analogue logo now sits in, so the rest of IsValid must still hold.
+        Assert.True(header.IsValid, $"header should be valid: {header}");
+    }
+
+    /// <summary>
+    /// The whole point of the port: LCDC lives at 0xFF4E on a Pocket.
+    /// </summary>
+    /// <remarks>
+    /// Asserted on the linked bytes rather than on the flag being passed,
+    /// because the flag only selects a library and it is that library reaching
+    /// the ROM that matters. The absence check is the stronger half: one stray
+    /// write to 0xFF40 is a display that never comes on, and it would come from
+    /// GBDK's own code rather than from anything GB# emitted.
+    /// </remarks>
+    [Fact]
+    public void PocketBuildMovesLcdcToItsPocketAddress()
+    {
+        if (SkipWithoutGbdk())
+        {
+            return;
+        }
+
+        RomBuildResult build = TestHarness.BuildRom(
+            TestHarness.Program("        Display.Enable();\n        Display.ShowBackground();"),
+            platform: GBPlatform.AnaloguePocket);
+
+        Assert.True(build.Succeeded, TestHarness.Describe(build.Diagnostics));
+
+        byte[] rom = File.ReadAllBytes(build.RomPath!);
+
+        // LDH (n),A is 0xE0 followed by the low byte of the address.
+        Assert.True(Contains(rom, [0xE0, 0x4E]), "a Pocket build must write LCDC at 0xFF4E");
+        Assert.False(Contains(rom, [0xE0, 0x40]), "a Pocket build must never write the Game Boy's LCDC");
+    }
+
+    private static bool Contains(byte[] haystack, byte[] needle) =>
+        haystack.AsSpan().IndexOf(needle) >= 0;
 
     [Fact]
     public void LanguageCoreCompilesThroughGbdk()

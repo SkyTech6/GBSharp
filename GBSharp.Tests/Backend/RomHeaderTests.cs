@@ -20,6 +20,14 @@ public sealed class RomHeaderTests
         0x6E, 0x0E, 0xEC, 0xCC, 0xDD, 0xDC, 0x99, 0x9F, 0xBB, 0xB9, 0x33, 0x3E,
     ];
 
+    private static readonly byte[] AnalogueLogo =
+    [
+        0x01, 0x10, 0xCE, 0xEF, 0x00, 0x00, 0x44, 0xAA, 0x00, 0x74, 0x00, 0x18,
+        0x11, 0x95, 0x00, 0x34, 0x00, 0x1A, 0x00, 0xD5, 0x00, 0x22, 0x00, 0x69,
+        0x6F, 0xF6, 0xF7, 0x73, 0x09, 0x90, 0xE1, 0x10, 0x44, 0x40, 0x9A, 0x90,
+        0xD5, 0xD0, 0x44, 0x30, 0xA9, 0x21, 0x5D, 0x48, 0x22, 0xE0, 0xF8, 0x60,
+    ];
+
     /// <summary>
     /// A ROM the boot ROM would accept, with the checksums made to agree.
     /// </summary>
@@ -170,6 +178,46 @@ public sealed class RomHeaderTests
     [Fact]
     public void ABufferTooSmallToHoldAHeaderIsRejected() =>
         Assert.Null(RomHeader.Parse(new byte[0x1000]));
+
+    /// <summary>
+    /// The logo names the port that linked the image, so the two known ones are
+    /// told apart rather than both collapsing into "valid".
+    /// </summary>
+    [Fact]
+    public void EachKnownBootLogoIsIdentified()
+    {
+        byte[] gameBoy = Rom(0x8000, 0x00, 0x00);
+        Assert.Equal(BootLogo.Nintendo, RomHeader.Parse(gameBoy)!.Logo);
+        Assert.True(RomHeader.Parse(gameBoy)!.MatchesPlatform(GBPlatform.GameBoy));
+
+        byte[] pocket = Rom(0x8000, 0x00, 0x00);
+        AnalogueLogo.CopyTo(pocket, 0x104);
+
+        RomHeader header = Assert.IsType<RomHeader>(RomHeader.Parse(pocket));
+
+        Assert.Equal(BootLogo.Analogue, header.Logo);
+        Assert.True(header.HasValidLogo);
+        Assert.True(header.MatchesPlatform(GBPlatform.AnaloguePocket));
+
+        // The half that catches a wrong-port build: a Pocket image asked for as
+        // a Game Boy one is not merely unusual, it will not boot.
+        Assert.False(header.MatchesPlatform(GBPlatform.GameBoy));
+    }
+
+    [Fact]
+    public void AnUnknownLogoBootsNothing()
+    {
+        byte[] rom = Rom(0x8000, 0x00, 0x00);
+        rom[0x104] ^= 0xFF;
+
+        RomHeader header = Assert.IsType<RomHeader>(RomHeader.Parse(rom));
+
+        Assert.Equal(BootLogo.Unknown, header.Logo);
+        Assert.False(header.HasValidLogo);
+        Assert.False(header.MatchesPlatform(GBPlatform.GameBoy));
+        Assert.False(header.MatchesPlatform(GBPlatform.AnaloguePocket));
+        Assert.False(header.IsValid);
+    }
 
     [Fact]
     public void ToStringNamesTheMapperOnlyWhenThereIsOne()

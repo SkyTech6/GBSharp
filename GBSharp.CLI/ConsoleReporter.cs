@@ -105,7 +105,8 @@ public static class ConsoleReporter
         string romPath,
         GBSharp.Backend.GBDK.GBTarget target,
         IReadOnlyList<GBDiagnostic> diagnostics,
-        RomUsageReport? usage = null)
+        RomUsageReport? usage = null,
+        GBSharp.Backend.GBDK.GBPlatform platform = GBSharp.Backend.GBDK.GBPlatform.GameBoy)
     {
         long romBytes = report.RomBytes;
 
@@ -123,6 +124,15 @@ public static class ConsoleReporter
         Console.WriteLine("────────────────────────────────");
         Console.WriteLine();
         WriteRow("Target", target == GBSharp.Backend.GBDK.GBTarget.GameBoyColor ? "Game Boy Color" : "Game Boy");
+
+        // Only when it is not the Game Boy. A row that says "Game Boy" twice
+        // teaches nothing, and the distinction only becomes interesting the
+        // moment the answers differ.
+        if (platform == GBSharp.Backend.GBDK.GBPlatform.AnaloguePocket)
+        {
+            WriteRow("Platform", "Analogue Pocket");
+        }
+
         WriteRow("ROM", FormatBytes(romBytes));
 
         if (module.Functions.Any(f => !f.Bank.IsResident) || module.Globals.Any(g => !g.Bank.IsResident))
