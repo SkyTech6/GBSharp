@@ -8,6 +8,8 @@ section. The CLI, SDK, framework, and analyzer packages version together.
 
 ## Unreleased
 
+## v1.2.0 - 2026-10-30
+
 ### Added
 
 - Explicit tile and CGB palette placement for converted background, window,
