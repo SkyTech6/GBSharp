@@ -23,10 +23,31 @@ public static class Window
     /// <summary>
     /// Loads a converted image: its tiles, its map, and on Game Boy Color its
     /// attributes and palettes, onto the window layer instead of the
-    /// background. See <see cref="Background.Load"/>.
+    /// background. See <see cref="Background.Load(TileMap)"/>.
     /// </summary>
     [Native("gbs_window_load")]
     public static void Load(TileMap map) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Loads converted graphics and the map at explicit tile and CGB palette locations.</summary>
+    /// <remarks>Invalid placements do nothing. Background and window share tile data and palettes.</remarks>
+    [Native("gbs_window_load_at")]
+    public static void Load(TileMap map, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Uploads only converted tiles and palettes; does not change the hardware map.</summary>
+    [Native("gbs_window_load_graphics")]
+    public static void LoadGraphics(TileMap map, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Copies converted map cells without uploading graphics or palettes.</summary>
+    /// <remarks>
+    /// Source must fit the asset; width and height must be at most 32. Destination coordinates
+    /// wrap modulo 32. Invalid arguments do nothing. Tile and palette offsets must match
+    /// LoadGraphics. CGB attribute flags are preserved; palette attributes are ignored on DMG.
+    /// Call during safe VRAM update time and keep camera and scheduling state in game code.
+    /// </remarks>
+    [Native("gbs_window_copy_region")]
+    public static void CopyRegion(TileMap map, byte destinationX, byte destinationY,
+        byte width, byte height, byte sourceX, byte sourceY, byte firstTile, byte firstPalette) =>
+        throw FrameworkOnly.Declaration();
 
     /// <summary>Writes a rectangle of tile indices into the window map.</summary>
     [Native("gbs_win_load_map")]

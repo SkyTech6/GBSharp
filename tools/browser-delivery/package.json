@@ -1,0 +1,11 @@
+{
+  "name": "gbsharp-browser-delivery",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node verify.mjs"
+  },
+  "devDependencies": {
+    "playwright": "1.56.1"
+  }
+}

@@ -88,9 +88,10 @@ public static class Templates
     /// editor of whoever scaffolded next.
     /// </remarks>
     private static string PackageVersion =>
-        typeof(Templates).Assembly.GetName().Version is { } version
-            ? $"{version.Major}.{version.Minor}.{version.Build}"
-            : "0.1.0";
+        typeof(Templates).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .Cast<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .Single().InformationalVersion.Split('+')[0];
 
     /// <summary>
     /// The design-time project, so an editor can bind and analyse the code.

@@ -81,13 +81,30 @@ jobs:
           $readmeContent = $readmeContent -replace 'GBSharp\.Sdk/\d+\.\d+\.\d+', "GBSharp.Sdk/$newVersion"
           Set-Content -Path $readme -Value $readmeContent -NoNewline
 
+          # Keep an empty Unreleased section above the notes being released.
+          # Use UTC so the date is independent of the runner's local timezone.
+          $changelog = 'CHANGELOG.md'
+          $changelogContent = Get-Content $changelog -Raw
+          $unreleased = [regex]::new('(?m)^## Unreleased[ \t]*(?=\r?$)')
+          if ($unreleased.Matches($changelogContent).Count -ne 1) {
+            throw "Expected exactly one '## Unreleased' heading in $changelog"
+          }
+          if ($changelogContent -match "(?m)^## v$([regex]::Escape($newVersion)) - ") {
+            throw "Release v$newVersion already exists in $changelog"
+          }
+          $newline = if ($changelogContent.Contains("`r`n")) { "`r`n" } else { "`n" }
+          $releaseDate = [DateTime]::UtcNow.ToString('yyyy-MM-dd')
+          $replacement = "## Unreleased$newline$newline## v$newVersion - $releaseDate"
+          $changelogContent = $unreleased.Replace($changelogContent, $replacement, 1)
+          Set-Content -Path $changelog -Value $changelogContent -NoNewline
+
           "version=$newVersion" >> $env:GITHUB_OUTPUT
 
       - name: Commit version bump
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add Directory.Build.props GBSharp.Sdk/README.md
+          git add Directory.Build.props GBSharp.Sdk/README.md CHANGELOG.md
           git commit -m "chore: bump version to ${{ steps.bump.outputs.version }}"
           git push origin HEAD:${{ github.ref }}
 
@@ -134,6 +151,38 @@ jobs:
           if (Compare-Object $expected $actual) {
             throw "Expected exactly [$($expected -join ', ')] but packed [$($actual -join ', ')]."
           }
+
+      - name: Validate installed package consumers
+        shell: pwsh
+        timeout-minutes: 20
+        run: ./tools/test-package-consumer.ps1 -PackageDirectory packages -ArtifactsDirectory artifacts/package-consumer
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tools/browser-delivery/package-lock.json
+
+      - name: Install pinned browser
+        timeout-minutes: 10
+        run: |
+          npm --prefix tools/browser-delivery ci
+          npx --prefix tools/browser-delivery playwright install --with-deps chromium
+
+      - name: Validate actual browser deliveries
+        timeout-minutes: 5
+        run: node tools/browser-delivery/verify.mjs artifacts/package-consumer/manifest.json artifacts/browser-delivery
+
+      - name: Retain delivery evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-delivery-evidence
+          path: |
+            artifacts/package-consumer/
+            artifacts/browser-delivery/
+            packages/*.nupkg
+          if-no-files-found: warn
 
       # Exchanges this job's OIDC token for a short-lived API key, under the
       # Trusted Publishing policy registered on nuget.org for this repository,

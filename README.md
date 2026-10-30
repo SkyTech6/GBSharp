@@ -43,7 +43,7 @@ The whole `Sprites[0].X` chain erases to a single OAM store and the arithmetic s
 
 ## Status
 
-Phases 0 through 6 are implemented: the vertical pipeline, the language core, the framework, the asset pipeline, ROM banking, developer tooling, and the cost and stack analyses. Phase 7 (a GBA backend) is the only one untouched, and the IR is what would make it a backend rather than a rewrite. What remains open, and why, is tracked in [ROADMAP.md](ROADMAP.md).
+Phases 0 through 6 are implemented: the vertical pipeline, the language core, the framework, the asset pipeline, ROM banking, developer tooling, and the cost and stack analyses. Phase 7 (a GBA backend) is the only one untouched, and the IR is what would make it a backend rather than a rewrite. What remains open, and why, is tracked in [ROADMAP.md](ROADMAP.md). Notable changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
 ## Getting started
 

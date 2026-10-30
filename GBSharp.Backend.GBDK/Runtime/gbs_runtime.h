@@ -458,4 +458,79 @@ inline void gbs_audio_stop(uint8_t channel) {
     else                    NR42_REG = 0x00U;
 }
 
+
+/* Explicit converted-asset placement and map-only copies. */
+void gbs_background_load_graphics(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_background_copy_region(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t dest_x, uint8_t dest_y, uint8_t width, uint8_t height,
+    uint8_t source_x, uint8_t source_y, uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_background_load_at(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_window_load_graphics(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_window_copy_region(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t dest_x, uint8_t dest_y, uint8_t width, uint8_t height,
+    uint8_t source_x, uint8_t source_y, uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_window_load_at(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_sprite_load_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    uint8_t tile_count, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+void gbs_metasprite_load_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED;
+
+uint8_t gbs_metasprite_move_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED;
+
+uint8_t gbs_metasprite_move_flip_x_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED;
+
+uint8_t gbs_metasprite_move_flip_y_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED;
+
+uint8_t gbs_metasprite_move_flip_xy_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED;
+
 #endif /* GBS_RUNTIME_H */

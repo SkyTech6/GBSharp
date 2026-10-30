@@ -776,6 +776,13 @@ public static class GBDiagnostics
         "Set Characters to the character set in the order the glyphs appear on the sheet, for " +
         "example [Font(\"font.png\", Characters = \"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .,!?\")].");
 
+    public static readonly GBDiagnosticDescriptor InvalidAssetPlacement = Asset(
+        "GBS0629",
+        "Invalid converted asset placement",
+        "Invalid placement for '{0}': {1}.",
+        "Keep tile and palette sums within hardware capacity, align 8x16 sprites to an even tile, " +
+        "and keep source rectangles within the converted map. Dynamic invalid placements are runtime no-ops.");
+
     // ---------------------------------------------------------------------
     // GBS9000+ - internal
     // ---------------------------------------------------------------------

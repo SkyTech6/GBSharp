@@ -121,6 +121,11 @@ public struct SpriteTable
     /// </summary>
     [Native("gbs_sprite_load")]
     public void Load(SpriteAsset sheet) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Uploads a sheet at explicit tile and CGB palette locations.</summary>
+    /// <remarks>Set each sprite's tile and palette using the same offsets. In 8x16 mode firstTile must be even.</remarks>
+    [Native("gbs_sprite_load_at")]
+    public void Load(SpriteAsset sheet, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
 }
 
 /// <summary>

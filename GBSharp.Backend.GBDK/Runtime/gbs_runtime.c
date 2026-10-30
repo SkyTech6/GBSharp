@@ -340,3 +340,301 @@ uint8_t gbs_metasprite_move_flip_xy(
 
     return used;
 }
+
+/* Explicit placements use 16-bit sums before narrowing. Dynamic invalid input is a
+   no-op, never a partially applied/wrapped placement. No allocator is involved. */
+static uint8_t gbs_placement_valid(uint8_t tile_count, uint8_t palette_count,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    return (uint16_t)first_tile + tile_count <= 256u &&
+        first_palette < 8u && (uint16_t)first_palette + palette_count <= 8u;
+}
+
+void gbs_background_load_graphics(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, previous_vbk;
+    (void)map; (void)attributes; (void)map_width; (void)map_height;
+    if (!gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    previous = CURRENT_BANK;
+    previous_vbk = VBK_REG;
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = VBK_TILES;
+    gbs_map(bank);
+    if (tile_count) set_bkg_data(first_tile, tile_count, tiles);
+    if (DEVICE_SUPPORTS_COLOR && palettes && palette_count)
+        set_bkg_palette(first_palette, palette_count, (const palette_color_t *)palettes);
+    gbs_map(previous);
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = previous_vbk;
+}
+
+void gbs_background_copy_region(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t dest_x, uint8_t dest_y, uint8_t width, uint8_t height,
+    uint8_t source_x, uint8_t source_y, uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, previous_vbk, row, col;
+    uint8_t buffer[32];
+    uint16_t offset;
+    (void)tiles; (void)palettes;
+    if (!map || !width || !height || width > 32u || height > 32u ||
+        (uint16_t)source_x + width > map_width ||
+        (uint16_t)source_y + height > map_height ||
+        !gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    previous = CURRENT_BANK;
+    previous_vbk = VBK_REG;
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = VBK_TILES;
+    gbs_map(bank);
+    for (row = 0; row < height; ++row) {
+        offset = (uint16_t)(source_y + row) * map_width + source_x;
+        for (col = 0; col < width; ++col) buffer[col] = map[offset + col] + first_tile;
+        set_bkg_tiles(dest_x & 31u, (dest_y + row) & 31u, width, 1, buffer);
+        if (DEVICE_SUPPORTS_COLOR && attributes) {
+            uint8_t previous_vbk = VBK_REG;
+            for (col = 0; col < width; ++col) {
+                uint8_t attr = attributes[offset + col];
+                buffer[col] = (attr & 0xf8u) | ((attr & 7u) + first_palette);
+            }
+            VBK_REG = VBK_ATTRIBUTES;
+            set_bkg_tiles(dest_x & 31u, (dest_y + row) & 31u, width, 1, buffer);
+            VBK_REG = previous_vbk;
+        }
+    }
+    gbs_map(previous);
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = previous_vbk;
+}
+
+void gbs_background_load_at(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    if (map_width > 32u || map_height > 32u ||
+        !gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    gbs_background_load_graphics(tiles, map, attributes, palettes, tile_count, map_width, map_height, palette_count, bank, first_tile, first_palette);
+    gbs_background_copy_region(tiles, map, attributes, palettes, tile_count, map_width, map_height, palette_count, bank, 0, 0, map_width, map_height, 0, 0, first_tile, first_palette);
+}
+
+void gbs_window_load_graphics(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, previous_vbk;
+    (void)map; (void)attributes; (void)map_width; (void)map_height;
+    if (!gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    previous = CURRENT_BANK;
+    previous_vbk = VBK_REG;
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = VBK_TILES;
+    gbs_map(bank);
+    if (tile_count) set_bkg_data(first_tile, tile_count, tiles);
+    if (DEVICE_SUPPORTS_COLOR && palettes && palette_count)
+        set_bkg_palette(first_palette, palette_count, (const palette_color_t *)palettes);
+    gbs_map(previous);
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = previous_vbk;
+}
+
+void gbs_window_copy_region(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t dest_x, uint8_t dest_y, uint8_t width, uint8_t height,
+    uint8_t source_x, uint8_t source_y, uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, previous_vbk, row, col;
+    uint8_t buffer[32];
+    uint16_t offset;
+    (void)tiles; (void)palettes;
+    if (!map || !width || !height || width > 32u || height > 32u ||
+        (uint16_t)source_x + width > map_width ||
+        (uint16_t)source_y + height > map_height ||
+        !gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    previous = CURRENT_BANK;
+    previous_vbk = VBK_REG;
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = VBK_TILES;
+    gbs_map(bank);
+    for (row = 0; row < height; ++row) {
+        offset = (uint16_t)(source_y + row) * map_width + source_x;
+        for (col = 0; col < width; ++col) buffer[col] = map[offset + col] + first_tile;
+        set_win_tiles(dest_x & 31u, (dest_y + row) & 31u, width, 1, buffer);
+        if (DEVICE_SUPPORTS_COLOR && attributes) {
+            uint8_t previous_vbk = VBK_REG;
+            for (col = 0; col < width; ++col) {
+                uint8_t attr = attributes[offset + col];
+                buffer[col] = (attr & 0xf8u) | ((attr & 7u) + first_palette);
+            }
+            VBK_REG = VBK_ATTRIBUTES;
+            set_win_tiles(dest_x & 31u, (dest_y + row) & 31u, width, 1, buffer);
+            VBK_REG = previous_vbk;
+        }
+    }
+    gbs_map(previous);
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = previous_vbk;
+}
+
+void gbs_window_load_at(
+    const uint8_t *tiles, const uint8_t *map, const uint8_t *attributes,
+    const uint16_t *palettes, uint8_t tile_count,
+    uint8_t map_width, uint8_t map_height, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    if (map_width > 32u || map_height > 32u ||
+        !gbs_placement_valid(tile_count, palette_count, first_tile, first_palette)) return;
+    gbs_window_load_graphics(tiles, map, attributes, palettes, tile_count, map_width, map_height, palette_count, bank, first_tile, first_palette);
+    gbs_window_copy_region(tiles, map, attributes, palettes, tile_count, map_width, map_height, palette_count, bank, 0, 0, map_width, map_height, 0, 0, first_tile, first_palette);
+}
+
+void gbs_sprite_load_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    uint8_t tile_count, uint8_t palette_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, previous_vbk;
+    if (!gbs_placement_valid(tile_count, palette_count, first_tile, first_palette) ||
+        ((LCDC_REG & 4u) && (first_tile & 1u))) return;
+    previous = CURRENT_BANK;
+    previous_vbk = VBK_REG;
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = VBK_TILES;
+    gbs_map(bank);
+    if (tile_count) set_sprite_data(first_tile, tile_count, tiles);
+    if (DEVICE_SUPPORTS_COLOR && palettes && palette_count)
+        set_sprite_palette(first_palette, palette_count, (const palette_color_t *)palettes);
+    gbs_map(previous);
+    if (DEVICE_SUPPORTS_COLOR) VBK_REG = previous_vbk;
+}
+
+void gbs_metasprite_load_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t first_tile, uint8_t first_palette) NONBANKED
+{
+    (void)frames; (void)frame_offsets; (void)frame_count;
+    gbs_sprite_load_at(tiles, palettes, tile_count, palette_count, bank, first_tile, first_palette);
+}
+
+uint8_t gbs_metasprite_move_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, count = 0, used, i;
+    const metasprite_t *entries;
+    (void)tiles; (void)palettes;
+    if (frame >= frame_count || base_sprite >= 40u ||
+        !gbs_placement_valid(tile_count, palette_count, base_tile, first_palette) ||
+        ((LCDC_REG & 4u) && (base_tile & 1u))) return 0;
+    previous = CURRENT_BANK;
+    gbs_map(bank);
+    entries = (const metasprite_t *)frames + frame_offsets[frame];
+    while (entries[count].dy != -128) {
+        if ((uint16_t)base_sprite + count >= 40u) { gbs_map(previous); return 0; }
+        ++count;
+    }
+    used = move_metasprite_ex(entries, base_tile, 0, base_sprite, x, y);
+    if (DEVICE_SUPPORTS_COLOR && first_palette) {
+        for (i = 0; i < used; ++i) {
+            uint8_t attr = get_sprite_prop(base_sprite + i);
+            set_sprite_prop(base_sprite + i, (attr & 0xf8u) | ((attr & 7u) + first_palette));
+        }
+    }
+    gbs_map(previous);
+    return used;
+}
+
+uint8_t gbs_metasprite_move_flip_x_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, count = 0, used, i;
+    const metasprite_t *entries;
+    (void)tiles; (void)palettes;
+    if (frame >= frame_count || base_sprite >= 40u ||
+        !gbs_placement_valid(tile_count, palette_count, base_tile, first_palette) ||
+        ((LCDC_REG & 4u) && (base_tile & 1u))) return 0;
+    previous = CURRENT_BANK;
+    gbs_map(bank);
+    entries = (const metasprite_t *)frames + frame_offsets[frame];
+    while (entries[count].dy != -128) {
+        if ((uint16_t)base_sprite + count >= 40u) { gbs_map(previous); return 0; }
+        ++count;
+    }
+    used = move_metasprite_flipx(entries, base_tile, 0, base_sprite, x, y);
+    if (DEVICE_SUPPORTS_COLOR && first_palette) {
+        for (i = 0; i < used; ++i) {
+            uint8_t attr = get_sprite_prop(base_sprite + i);
+            set_sprite_prop(base_sprite + i, (attr & 0xf8u) | ((attr & 7u) + first_palette));
+        }
+    }
+    gbs_map(previous);
+    return used;
+}
+
+uint8_t gbs_metasprite_move_flip_y_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, count = 0, used, i;
+    const metasprite_t *entries;
+    (void)tiles; (void)palettes;
+    if (frame >= frame_count || base_sprite >= 40u ||
+        !gbs_placement_valid(tile_count, palette_count, base_tile, first_palette) ||
+        ((LCDC_REG & 4u) && (base_tile & 1u))) return 0;
+    previous = CURRENT_BANK;
+    gbs_map(bank);
+    entries = (const metasprite_t *)frames + frame_offsets[frame];
+    while (entries[count].dy != -128) {
+        if ((uint16_t)base_sprite + count >= 40u) { gbs_map(previous); return 0; }
+        ++count;
+    }
+    used = move_metasprite_flipy(entries, base_tile, 0, base_sprite, x, y);
+    if (DEVICE_SUPPORTS_COLOR && first_palette) {
+        for (i = 0; i < used; ++i) {
+            uint8_t attr = get_sprite_prop(base_sprite + i);
+            set_sprite_prop(base_sprite + i, (attr & 0xf8u) | ((attr & 7u) + first_palette));
+        }
+    }
+    gbs_map(previous);
+    return used;
+}
+
+uint8_t gbs_metasprite_move_flip_xy_at(
+    const uint8_t *tiles, const uint16_t *palettes,
+    const uint8_t *frames, const uint8_t *frame_offsets,
+    uint8_t tile_count, uint8_t palette_count, uint8_t frame_count, uint8_t bank,
+    uint8_t frame, uint8_t base_tile, uint8_t base_sprite, uint8_t x, uint8_t y, uint8_t first_palette) NONBANKED
+{
+    uint8_t previous, count = 0, used, i;
+    const metasprite_t *entries;
+    (void)tiles; (void)palettes;
+    if (frame >= frame_count || base_sprite >= 40u ||
+        !gbs_placement_valid(tile_count, palette_count, base_tile, first_palette) ||
+        ((LCDC_REG & 4u) && (base_tile & 1u))) return 0;
+    previous = CURRENT_BANK;
+    gbs_map(bank);
+    entries = (const metasprite_t *)frames + frame_offsets[frame];
+    while (entries[count].dy != -128) {
+        if ((uint16_t)base_sprite + count >= 40u) { gbs_map(previous); return 0; }
+        ++count;
+    }
+    used = move_metasprite_flipxy(entries, base_tile, 0, base_sprite, x, y);
+    if (DEVICE_SUPPORTS_COLOR && first_palette) {
+        for (i = 0; i < used; ++i) {
+            uint8_t attr = get_sprite_prop(base_sprite + i);
+            set_sprite_prop(base_sprite + i, (attr & 0xf8u) | ((attr & 7u) + first_palette));
+        }
+    }
+    gbs_map(previous);
+    return used;
+}

@@ -332,15 +332,20 @@ export class WebPlayer {
 
     try {
       const database = await this.openDatabase();
-      const bytes = await new Promise((resolve, reject) => {
-        const request = database
-          .transaction('saves', 'readonly')
-          .objectStore('saves')
-          .get(this.saveKey);
+      let bytes;
+      try {
+        bytes = await new Promise((resolve, reject) => {
+          const request = database
+            .transaction('saves', 'readonly')
+            .objectStore('saves')
+            .get(this.saveKey);
 
-        request.onsuccess = () => resolve(request.result);
-        request.onerror = () => reject(request.error);
-      });
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+      } finally {
+        database.close();
+      }
 
       if (bytes) {
         const view = new Uint8Array(bytes);
@@ -373,17 +378,26 @@ export class WebPlayer {
 
     const bytes = this.game.readSaveRam();
     if (force || signature(bytes) !== this.saveSignature) {
-      this.writeSave(bytes);
+      return this.writeSave(bytes);
     }
   }
 
   async writeSave(bytes) {
     try {
       const database = await this.openDatabase();
-      database
-        .transaction('saves', 'readwrite')
-        .objectStore('saves')
-        .put(bytes.buffer, this.saveKey);
+      try {
+        // Completion means the transaction committed, not merely that a put
+        // was queued. Hosts can await an explicit save before closing a page.
+        await new Promise((resolve, reject) => {
+          const transaction = database.transaction('saves', 'readwrite');
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+          transaction.onabort = () => reject(transaction.error);
+          transaction.objectStore('saves').put(bytes.slice().buffer, this.saveKey);
+        });
+      } finally {
+        database.close();
+      }
     } catch {
       /* As above: storage is a convenience, not a requirement to play. */
     }

@@ -16,10 +16,15 @@ public static class Metasprites
     [Native("gbs_metasprite_load")]
     public static void Load(MetaspriteAsset sheet) => throw FrameworkOnly.Declaration();
 
+    /// <summary>Uploads a sheet at explicit tile and CGB palette locations.</summary>
+    /// <remarks>Use the same baseTile and firstPalette when drawing. In 8x16 mode firstTile must be even.</remarks>
+    [Native("gbs_metasprite_load_at")]
+    public static void Load(MetaspriteAsset sheet, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
+
     /// <summary>
     /// Moves one frame of a metasprite to the absolute position x, y.
     /// </summary>
-    /// <param name="sheet">The converted sheet, already loaded with <see cref="Load"/>.</param>
+    /// <param name="sheet">The converted sheet, already loaded with <see cref="Load(MetaspriteAsset)"/>.</param>
     /// <param name="frame">Which frame to draw, in the order the sheet's frames were declared.</param>
     /// <param name="baseTile">The first tile this frame's sub-sprites were uploaded to.</param>
     /// <param name="baseSprite">The first hardware sprite to use; the frame uses as many as it needs from there.</param>
@@ -36,19 +41,39 @@ public static class Metasprites
     public static byte Move(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y) =>
         throw FrameworkOnly.Declaration();
 
-    /// <summary>Same as <see cref="Move"/>, mirrored horizontally.</summary>
+    /// <summary>Draws a frame with matching tile and CGB palette offsets, preserving sub-sprite flags.</summary>
+    [Native("gbs_metasprite_move_at")]
+    public static byte Move(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y, byte firstPalette) =>
+        throw FrameworkOnly.Declaration();
+
+    /// <summary>Same as <see cref="Move(MetaspriteAsset, byte, byte, byte, byte, byte)"/>, mirrored horizontally.</summary>
     [Native("gbs_metasprite_move_flip_x")]
     public static byte MoveFlippedX(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y) =>
         throw FrameworkOnly.Declaration();
 
-    /// <summary>Same as <see cref="Move"/>, mirrored vertically.</summary>
+    /// <summary>Draws a frame with matching tile and CGB palette offsets, preserving sub-sprite flags.</summary>
+    [Native("gbs_metasprite_move_flip_x_at")]
+    public static byte MoveFlippedX(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y, byte firstPalette) =>
+        throw FrameworkOnly.Declaration();
+
+    /// <summary>Same as <see cref="Move(MetaspriteAsset, byte, byte, byte, byte, byte)"/>, mirrored vertically.</summary>
     [Native("gbs_metasprite_move_flip_y")]
     public static byte MoveFlippedY(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y) =>
         throw FrameworkOnly.Declaration();
 
-    /// <summary>Same as <see cref="Move"/>, mirrored both ways.</summary>
+    /// <summary>Draws a frame with matching tile and CGB palette offsets, preserving sub-sprite flags.</summary>
+    [Native("gbs_metasprite_move_flip_y_at")]
+    public static byte MoveFlippedY(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y, byte firstPalette) =>
+        throw FrameworkOnly.Declaration();
+
+    /// <summary>Same as <see cref="Move(MetaspriteAsset, byte, byte, byte, byte, byte)"/>, mirrored both ways.</summary>
     [Native("gbs_metasprite_move_flip_xy")]
     public static byte MoveFlippedXy(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y) =>
+        throw FrameworkOnly.Declaration();
+
+    /// <summary>Draws a frame with matching tile and CGB palette offsets, preserving sub-sprite flags.</summary>
+    [Native("gbs_metasprite_move_flip_xy_at")]
+    public static byte MoveFlippedXy(MetaspriteAsset sheet, byte frame, byte baseTile, byte baseSprite, byte x, byte y, byte firstPalette) =>
         throw FrameworkOnly.Declaration();
 
     /// <summary>
@@ -57,7 +82,7 @@ public static class Metasprites
     /// </summary>
     /// <remarks>
     /// Frames vary in how many sub-sprites they need. After moving to a new
-    /// frame, hide from its <see cref="Move"/> return value up to the previous
+    /// frame, hide from its <see cref="Move(MetaspriteAsset, byte, byte, byte, byte, byte)"/> return value up to the previous
     /// frame's, or the sprites that frame is no longer using stay on screen.
     /// </remarks>
     [Native("hide_sprites_range")]

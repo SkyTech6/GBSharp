@@ -1,0 +1,8 @@
+{
+  "name": "BrowserSaveFixture",
+  "target": "gb",
+  "mbc": "mbc5+ram+battery",
+  "romBanks": 4,
+  "ramBanks": 1,
+  "includes": ["save_fixture.h"]
+}

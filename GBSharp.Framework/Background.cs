@@ -35,6 +35,27 @@ public static class Background
     [Native("gbs_background_load")]
     public static void Load(TileMap map) => throw FrameworkOnly.Declaration();
 
+    /// <summary>Loads converted graphics and the map at explicit tile and CGB palette locations.</summary>
+    /// <remarks>Invalid placements do nothing. Background and window share tile data and palettes.</remarks>
+    [Native("gbs_background_load_at")]
+    public static void Load(TileMap map, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Uploads only converted tiles and palettes; does not change the hardware map.</summary>
+    [Native("gbs_background_load_graphics")]
+    public static void LoadGraphics(TileMap map, byte firstTile, byte firstPalette) => throw FrameworkOnly.Declaration();
+
+    /// <summary>Copies converted map cells without uploading graphics or palettes.</summary>
+    /// <remarks>
+    /// Source must fit the asset; width and height must be at most 32. Destination coordinates
+    /// wrap modulo 32. Invalid arguments do nothing. Tile and palette offsets must match
+    /// LoadGraphics. CGB attribute flags are preserved; palette attributes are ignored on DMG.
+    /// Call during safe VRAM update time and keep camera and scheduling state in game code.
+    /// </remarks>
+    [Native("gbs_background_copy_region")]
+    public static void CopyRegion(TileMap map, byte destinationX, byte destinationY,
+        byte width, byte height, byte sourceX, byte sourceY, byte firstTile, byte firstPalette) =>
+        throw FrameworkOnly.Declaration();
+
     /// <summary>
     /// Copies a window of a larger map into the hardware map.
     /// </summary>

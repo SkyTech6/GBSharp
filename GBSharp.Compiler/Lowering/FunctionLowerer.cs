@@ -1397,6 +1397,8 @@ internal sealed class FunctionLowerer(
             return invocation.Instance is null ? IRUnit.Instance : LowerExpression(invocation.Instance, null);
         }
 
+        ValidateAssetPlacement(invocation);
+
         var arguments = new List<IRExpression>();
         if (!TryAddReceiver(arguments, invocation.Instance, target))
         {
@@ -1426,6 +1428,65 @@ internal sealed class FunctionLowerer(
             location,
             target.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat));
         return null;
+    }
+
+    // This rule needs converted image statistics, so it intentionally stays out of
+    // the IDE catalog (the analyzer does not read/convert image files).
+    private void ValidateAssetPlacement(IInvocationOperation invocation)
+    {
+        string? native = framework.GetNativeSymbol(invocation.TargetMethod);
+        if (native is null || !(native.EndsWith("_at", StringComparison.Ordinal) ||
+            native.EndsWith("_load_graphics", StringComparison.Ordinal) ||
+            native.EndsWith("_copy_region", StringComparison.Ordinal))) return;
+        IFieldReferenceOperation? asset = invocation.Arguments.Select(a => a.Value)
+            .OfType<IFieldReferenceOperation>().FirstOrDefault(a => assets.IsAsset(a.Field));
+        if (asset is null || assets.For(asset.Field) is not { } binding) return;
+        int? Constant(string parameter)
+        {
+            IArgumentOperation? arg = invocation.Arguments.FirstOrDefault(a => a.Parameter?.Name == parameter);
+            return arg?.Value.ConstantValue is { HasValue: true, Value: { } value }
+                ? Convert.ToInt32(value, System.Globalization.CultureInfo.InvariantCulture) : null;
+        }
+        void Invalid(string reason) => diagnostics.Report(GBDiagnostics.InvalidAssetPlacement,
+            Loc(invocation), binding.Name, reason);
+        int? tile = Constant("firstTile") ?? Constant("baseTile");
+        int? palette = Constant("firstPalette");
+        if (tile + binding.Description.Stats.UniqueTiles > 256) Invalid("tile range exceeds 256 tiles");
+        if (palette >= 8 || palette + binding.Description.Stats.PaletteCount > 8) Invalid("palette range exceeds eight palettes");
+        AttributeData? attr = framework.GetAssetAttribute(asset.Field);
+        bool tall = attr?.NamedArguments.Any(a => a.Key == "TallSprites" && a.Value.Value is true) == true;
+        if (tall && tile % 2 == 1) Invalid("8x16 sprites require an even first tile");
+        if (native.EndsWith("_copy_region", StringComparison.Ordinal))
+        {
+            int? width = Constant("width"), height = Constant("height");
+            if (width > 32 || height > 32 || Constant("sourceX") + width > binding.Description.Stats.WidthTiles ||
+                Constant("sourceY") + height > binding.Description.Stats.HeightTiles)
+                Invalid("source rectangle exceeds the asset or the 32x32 hardware map capacity");
+        }
+        else if (native is "gbs_background_load_at" or "gbs_window_load_at" &&
+            (binding.Description.Stats.WidthTiles > 32 || binding.Description.Stats.HeightTiles > 32))
+            Invalid("full map exceeds 32x32; use LoadGraphics and CopyRegion");
+        int? frame = Constant("frame");
+        if (frame >= binding.Description.Stats.FrameCount) Invalid("frame is outside the sheet");
+        int? baseSprite = Constant("baseSprite");
+        if (baseSprite >= 40) Invalid("first hardware sprite is outside OAM");
+        if (binding.Kind == GBSharp.Compiler.Assets.AssetKind.Metasprite && frame is >= 0 &&
+            frame < binding.Description.Stats.FrameCount && baseSprite is >= 0 and < 40)
+        {
+            IRDataBlob? frames = binding.Globals.FirstOrDefault(g => g.Name.EndsWith("_frames", StringComparison.Ordinal))?.Initializer as IRDataBlob;
+            IRDataBlob? offsets = binding.Globals.FirstOrDefault(g => g.Name.EndsWith("_frame_offsets", StringComparison.Ordinal))?.Initializer as IRDataBlob;
+            if (frames is not null && offsets is not null)
+            {
+                int entry = offsets.Bytes.Span[frame.Value] * 4;
+                int count = 0;
+                while (entry < frames.Bytes.Length && frames.Bytes.Span[entry] != 0x80)
+                {
+                    count++;
+                    entry += 4;
+                }
+                if (baseSprite + count > 40) Invalid("frame extends beyond the 40 hardware sprites");
+            }
+        }
     }
 
     /// <summary>

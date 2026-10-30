@@ -4,6 +4,7 @@
 [Dd]ebug/
 [Rr]elease/
 artifacts/
+TestResults/
 
 # Locally packed NuGet packages (the README's 'dotnet pack -o packages';
 # the real ones are produced and pushed by .github/workflows/publish.yml)

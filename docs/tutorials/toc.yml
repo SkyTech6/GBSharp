@@ -10,3 +10,5 @@
   href: many-objects.md
 - name: Banking a big game
   href: banking-a-big-game.md
+- name: Composing a scrolling scene
+  href: composed-scrolling.md

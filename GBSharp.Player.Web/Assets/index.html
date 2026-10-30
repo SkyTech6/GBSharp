@@ -190,7 +190,12 @@ const player = new WebPlayer(canvas, config);
  */
 window.gbsharpPlayer = player;
 
+let started = false;
 async function play() {
+  // The start button and the first key both reach this handler. A later key
+  // must not start a second emulator and a second animation loop.
+  if (started) return;
+  started = true;
   startButton.hidden = true;
 
   try {
